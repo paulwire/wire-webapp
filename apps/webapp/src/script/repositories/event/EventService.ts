@@ -71,7 +71,7 @@ const withThreadDefaults = <T extends Partial<EventRecord>>(event: T): T => {
     ...event,
     is_thread_reply: event.is_thread_reply ?? hasThread,
     thread_id: threadId,
-    thread_root_message_id: hasThread ? event.thread_root_message_id ?? threadId : null,
+    thread_root_message_id: hasThread ? (event.thread_root_message_id ?? threadId) : null,
   };
 };
 
@@ -412,25 +412,16 @@ export class EventService {
     }
 
     if (this.storageService.db) {
-      const collection = includeThreadReplies
-        ? this.storageService.db
-            .table(StorageSchemata.OBJECT_STORE.EVENTS)
-            .where('[conversation+time]')
-            .between(
-              [conversationId, fromDate.toISOString()],
-              [conversationId, toDate.toISOString()],
-              includeFrom,
-              includeTo,
-            )
-        : this.storageService.db
-            .table(StorageSchemata.OBJECT_STORE.EVENTS)
-            .where('[conversation+is_thread_reply+time]')
-            .between(
-              [conversationId, false, fromDate.toISOString()],
-              [conversationId, false, toDate.toISOString()],
-              includeFrom,
-              includeTo,
-            );
+      const collection = this.storageService.db
+        .table(StorageSchemata.OBJECT_STORE.EVENTS)
+        .where('[conversation+time]')
+        .between(
+          [conversationId, fromDate.toISOString()],
+          [conversationId, toDate.toISOString()],
+          includeFrom,
+          includeTo,
+        )
+        .and(record => includeThreadReplies || !isThreadReply(record));
       const events = await collection.limit(limit);
       return events;
     }

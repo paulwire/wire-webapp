@@ -150,7 +150,7 @@ export const ContentMessageComponent = ({
   const [isActionMenuVisible, setActionMenuVisibility] = useState(false);
   const [threadRepliesCount, setThreadRepliesCount] = useState(0);
   const isMenuOpen = useMessageActionsState(state => state.isMenuOpen);
-  const eventRepository = container.resolve(EventRepository);
+  const eventRepository = container.isRegistered(EventRepository, true) ? container.resolve(EventRepository) : null;
   useEffect(() => {
     setActionMenuVisibility(isFocused || msgFocusState);
   }, [msgFocusState, isFocused]);
@@ -167,9 +167,19 @@ export const ContentMessageComponent = ({
     const threadId = message.id;
 
     const loadRepliesCount = async () => {
-      const count = await eventRepository.eventService.countVisibleThreadReplies(conversation.id, threadId);
-      if (isSubscribed) {
-        setThreadRepliesCount(count);
+      if (!eventRepository) {
+        return;
+      }
+
+      try {
+        const count = await eventRepository.eventService.countVisibleThreadReplies(conversation.id, threadId);
+        if (isSubscribed) {
+          setThreadRepliesCount(count);
+        }
+      } catch {
+        if (isSubscribed) {
+          setThreadRepliesCount(0);
+        }
       }
     };
 
@@ -195,7 +205,7 @@ export const ContentMessageComponent = ({
       amplify.unsubscribe(THREAD_REPLY_SENT, handleThreadReplySent);
       amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
     };
-  }, [canShowThreadReplies, conversation.id, eventRepository.eventService, message.id]);
+  }, [canShowThreadReplies, conversation.id, eventRepository, message.id]);
 
   const isConversationReadonly = conversation.readOnlyState() !== null;
 
