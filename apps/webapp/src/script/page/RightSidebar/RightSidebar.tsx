@@ -17,7 +17,7 @@
  *
  */
 
-import {cloneElement, FC, ReactNode, useCallback, useEffect, useState} from 'react';
+import {cloneElement, FC, ReactNode, useCallback, useEffect, useRef, useState} from 'react';
 
 import {amplify} from 'amplify';
 import {CSSTransition, TransitionGroup} from 'react-transition-group';
@@ -61,11 +61,15 @@ import {ContentState} from '../useAppState';
 export const OPEN_CONVERSATION_DETAILS = 'OPEN_CONVERSATION_DETAILS';
 export const rightPanelAnimationTimeout = 350; // ms
 
-const Animated: FC<{children: ReactNode}> = ({children, ...rest}) => (
-  <CSSTransition classNames="right-to-left" timeout={rightPanelAnimationTimeout} {...rest}>
-    {children}
-  </CSSTransition>
-);
+const Animated: FC<{children: ReactNode}> = ({children, ...rest}) => {
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+
+  return (
+    <CSSTransition nodeRef={nodeRef} classNames="right-to-left" timeout={rightPanelAnimationTimeout} {...rest}>
+      <div ref={nodeRef}>{children}</div>
+    </CSSTransition>
+  );
+};
 
 export enum PanelState {
   ADD_PARTICIPANTS = 'ADD_PARTICIPANTS',
