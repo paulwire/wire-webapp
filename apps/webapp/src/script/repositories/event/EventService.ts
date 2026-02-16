@@ -64,7 +64,7 @@ const isCompleteEventRecord = (event: Partial<EventRecord>) =>
   'id' in event && 'conversation' in event && 'time' in event && 'type' in event;
 
 const withThreadDefaults = <T extends Partial<EventRecord>>(event: T): T => {
-  const threadId = event.thread_id ?? null;
+  const threadId = event.thread_id && event.thread_id.length ? event.thread_id : null;
   const hasThread = !!threadId;
 
   return {

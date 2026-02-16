@@ -129,6 +129,8 @@ type ThreadEventMetadata = {
   threadId?: string | null;
 };
 
+const normalizeThreadId = (threadId?: string | null): string | null => (threadId && threadId.length ? threadId : null);
+
 export class CryptographyMapper {
   private readonly logger: Logger;
 
@@ -655,7 +657,8 @@ export class CryptographyMapper {
   }
 
   private _extractThreadId(genericMessage: GenericMessage): string | null {
-    const fromPayload = (payload: ThreadPayload | undefined | null) => payload?.threadId ?? payload?.thread_id ?? null;
+    const fromPayload = (payload: ThreadPayload | undefined | null) =>
+      normalizeThreadId(payload?.threadId ?? payload?.thread_id ?? null);
 
     switch (genericMessage.content) {
       case GenericMessageType.TEXT:
@@ -674,8 +677,9 @@ export class CryptographyMapper {
   private _extractThreadMetadata(genericMessage: GenericMessage, event: EncryptedEvent) {
     const payloadThreadId = this._extractThreadId(genericMessage);
     const eventMetadata = event as EncryptedEvent & ThreadEventMetadata;
-    const eventThreadId =
-      eventMetadata.thread_id ?? eventMetadata.threadId ?? eventMetadata.thread_root_message_id ?? null;
+    const eventThreadId = normalizeThreadId(
+      eventMetadata.thread_id ?? eventMetadata.threadId ?? eventMetadata.thread_root_message_id ?? null,
+    );
     const threadId = payloadThreadId ?? eventThreadId;
     const threadRootMessageId = threadId ? (eventMetadata.thread_root_message_id ?? threadId) : null;
     const isThreadReply =
