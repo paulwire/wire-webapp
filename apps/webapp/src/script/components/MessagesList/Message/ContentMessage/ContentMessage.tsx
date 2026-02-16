@@ -23,7 +23,6 @@ import {QualifiedId} from '@wireapp/api-client/lib/user';
 import {amplify} from 'amplify';
 import cx from 'classnames';
 import ko from 'knockout';
-import {container} from 'tsyringe';
 
 import {OutlineCheck} from '@wireapp/react-ui-kit';
 import {WebAppEvents} from '@wireapp/webapp-events';
@@ -35,7 +34,6 @@ import {Conversation} from 'Repositories/entity/Conversation';
 import {CompositeMessage} from 'Repositories/entity/message/CompositeMessage';
 import {ContentMessage} from 'Repositories/entity/message/ContentMessage';
 import type {FileAsset as FileAssetType} from 'Repositories/entity/message/FileAsset';
-import {EventRepository} from 'Repositories/event/EventRepository';
 import {useRelativeTimestamp} from 'src/script/hooks/useRelativeTimestamp';
 import {StatusType} from 'src/script/message/StatusType';
 import {useKoSubscribableChildren} from 'Util/ComponentUtil';
@@ -84,6 +82,7 @@ export interface ContentMessageProps extends Omit<MessageActions, 'onClickResetS
   is1to1?: boolean;
   isFileShareRestricted: boolean;
   showThreadSummary?: boolean;
+  loadThreadRepliesCount: (conversationId: string, threadId: string) => Promise<number>;
 }
 
 export const ContentMessageComponent = ({
@@ -109,6 +108,7 @@ export const ContentMessageComponent = ({
   is1to1,
   isFileShareRestricted,
   showThreadSummary = true,
+  loadThreadRepliesCount,
 }: ContentMessageProps) => {
   const messageRef = useRef<HTMLDivElement | null>(null);
 
@@ -152,7 +152,6 @@ export const ContentMessageComponent = ({
   const [isActionMenuVisible, setActionMenuVisibility] = useState(false);
   const [threadRepliesCount, setThreadRepliesCount] = useState(0);
   const isMenuOpen = useMessageActionsState(state => state.isMenuOpen);
-  const eventRepository = container.isRegistered(EventRepository, true) ? container.resolve(EventRepository) : null;
   useEffect(() => {
     setActionMenuVisibility(isFocused || msgFocusState);
   }, [msgFocusState, isFocused]);
@@ -169,12 +168,8 @@ export const ContentMessageComponent = ({
     const threadId = message.id;
 
     const loadRepliesCount = async () => {
-      if (!eventRepository) {
-        return;
-      }
-
       try {
-        const count = await eventRepository.eventService.countVisibleThreadReplies(conversation.id, threadId);
+        const count = await loadThreadRepliesCount(conversation.id, threadId);
         if (isSubscribed) {
           setThreadRepliesCount(count);
         }
@@ -207,7 +202,7 @@ export const ContentMessageComponent = ({
       amplify.unsubscribe(THREAD_REPLY_SENT, handleThreadReplySent);
       amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
     };
-  }, [canShowThreadReplies, conversation.id, eventRepository, message.id]);
+  }, [canShowThreadReplies, conversation.id, loadThreadRepliesCount, message.id]);
 
   const isConversationReadonly = conversation.readOnlyState() !== null;
 

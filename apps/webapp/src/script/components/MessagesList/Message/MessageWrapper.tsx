@@ -226,6 +226,9 @@ export const MessageWrapper = ({
         is1to1={conversation.is1to1()}
         isFileShareRestricted={isFileShareRestricted}
         showThreadSummary={showThreadSummary}
+        loadThreadRepliesCount={(conversationId, threadId) =>
+          messageRepository.countVisibleThreadReplies(conversationId, threadId)
+        }
       />
     );
   }

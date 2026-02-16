@@ -220,6 +220,10 @@ export class MessageRepository {
     return rootMessageId;
   }
 
+  public async countVisibleThreadReplies(conversationId: string, threadId: string): Promise<number> {
+    return this.eventService.countVisibleThreadReplies(conversationId, threadId);
+  }
+
   /**
    * Triggers the handler for mismatch. Can be used if a mismatch is triggered from outside the MessageRepository
    *
