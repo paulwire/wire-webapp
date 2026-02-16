@@ -117,9 +117,10 @@ export const MessageWrapper = ({
         quoteEntity: quote,
         messageId,
         attachments: [],
+        threadId: message.threadId,
       });
     } else if (file) {
-      await messageRepository.retryUploadFile(conversation, file, firstAsset.isImage(), message.id);
+      await messageRepository.retryUploadFile(conversation, file, firstAsset.isImage(), message.id, message.threadId);
     }
   };
   const {display_name: displayName, hasGlobalMessageTimer} = useKoSubscribableChildren(conversation, [

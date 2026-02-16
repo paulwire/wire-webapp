@@ -146,6 +146,7 @@ type TextMessagePayload = {
   message: string;
   messageId?: string;
   quote?: OutgoingQuote;
+  threadId?: string | null;
 };
 type EditMessagePayload = TextMessagePayload & {originalMessageId: string};
 
@@ -215,6 +216,10 @@ export class MessageRepository {
     this.onClientMismatch = onClientMismatch;
   }
 
+  public getThreadIdFromRootMessage(rootMessageId: string): string {
+    return rootMessageId;
+  }
+
   /**
    * Triggers the handler for mismatch. Can be used if a mismatch is triggered from outside the MessageRepository
    *
@@ -266,7 +271,7 @@ export class MessageRepository {
    * @see https://docs.wire.com/understand/federation/index.html
    */
   private async sendText(
-    {conversation, message, mentions = [], linkPreview, quote, messageId}: TextMessagePayload,
+    {conversation, message, mentions = [], linkPreview, quote, messageId, threadId}: TextMessagePayload,
     options?: {syncTimestamp?: boolean},
   ) {
     const textMessage = MessageBuilder.buildTextMessage(
@@ -278,6 +283,7 @@ export class MessageRepository {
         {linkPreview, mentions, quote},
       ),
       messageId,
+      threadId,
     );
 
     return this.sendAndInjectMessage(textMessage, conversation, {...options, enableEphemeral: true});
@@ -289,7 +295,7 @@ export class MessageRepository {
    * @see https://docs.wire.com/understand/federation/index.html
    */
   private async sendMultipartText(
-    {conversation, message, messageId, attachments, linkPreview, mentions = [], quote}: MultipartMessagePayload,
+    {conversation, message, messageId, attachments, linkPreview, mentions = [], quote, threadId}: MultipartMessagePayload,
     options?: {syncTimestamp?: boolean},
   ) {
     const text = this.decorateTextMessage(
@@ -299,7 +305,7 @@ export class MessageRepository {
       conversation,
       {linkPreview, mentions, quote},
     );
-    const textMessage = MessageBuilder.buildMultipartMessage(attachments, text, messageId);
+    const textMessage = MessageBuilder.buildMultipartMessage(attachments, text, messageId, threadId);
 
     return this.sendAndInjectMessage(textMessage, conversation, {...options, enableEphemeral: true});
   }
@@ -399,6 +405,7 @@ export class MessageRepository {
     quoteEntity,
     messageId,
     attachments,
+    threadId,
   }: {
     conversation: Conversation;
     textMessage: string;
@@ -406,6 +413,7 @@ export class MessageRepository {
     quoteEntity?: OutgoingQuote;
     messageId?: string;
     attachments?: MultiPartContent['attachments'];
+    threadId?: string | null;
   }): Promise<void> {
     const textPayload = {
       conversation,
@@ -415,6 +423,7 @@ export class MessageRepository {
       // We set the id explicitely in order to be able to override the message if we generate a link preview
       // Similarly, we provide that same id when we retry to send a failed message in order to override the original
       messageId: messageId ?? createUuid(),
+      threadId,
     };
 
     let state;
@@ -590,6 +599,7 @@ export class MessageRepository {
     file: Blob,
     asImage: boolean = false,
     originalId?: string,
+    threadId?: string | null,
   ): Promise<EventRecord | void> {
     const uploadStarted = Date.now();
     const beforeUnload = (event: Event) => {
@@ -597,7 +607,7 @@ export class MessageRepository {
     };
 
     window.addEventListener('beforeunload', beforeUnload);
-    const assetMetadata = await this.createAssetMetadata(conversation, file, asImage, originalId);
+    const assetMetadata = await this.createAssetMetadata(conversation, file, asImage, originalId, threadId);
 
     if (!assetMetadata) {
       window.removeEventListener('beforeunload', beforeUnload);
@@ -608,7 +618,7 @@ export class MessageRepository {
     const {messageId} = message;
 
     try {
-      const {state} = await this.sendAssetRemotedata(conversation, file, messageId, asImage, metaData);
+      const {state} = await this.sendAssetRemotedata(conversation, file, messageId, asImage, metaData, threadId);
 
       if (state === SendAndInjectSendingState.FAILED) {
         await this.storeFileInDb(conversation, messageId, file);
@@ -631,7 +641,7 @@ export class MessageRepository {
         error,
       );
       const messageEntity = await this.getMessageInConversationById(conversation, messageId);
-      await this.sendAssetUploadFailed(conversation, messageEntity.id);
+      await this.sendAssetUploadFailed(conversation, messageEntity.id, Asset.NotUploaded.FAILED, messageEntity.threadId);
       return this.updateMessageAsUploadFailed(messageEntity);
     } finally {
       window.removeEventListener('beforeunload', beforeUnload);
@@ -652,8 +662,12 @@ export class MessageRepository {
     file: Blob,
     asImage: boolean = false,
     originalId: string,
+    threadId?: string | null,
   ): Promise<EventRecord | void> {
-    await this.uploadFile(conversation, file, asImage, originalId);
+    const resolvedThreadId =
+      threadId ??
+      (await this.getMessageInConversationById(conversation, originalId).then(message => message.threadId).catch(() => null));
+    await this.uploadFile(conversation, file, asImage, originalId, resolvedThreadId);
   }
 
   /**
@@ -735,6 +749,7 @@ export class MessageRepository {
     file: File | Blob,
     allowImageDetection?: boolean,
     originalId?: string,
+    threadId?: string | null,
   ) {
     try {
       const metadata = await buildMetadata(file);
@@ -747,7 +762,11 @@ export class MessageRepository {
         type: file.type,
       } as FileMetaDataContent;
 
-      const message = MessageBuilder.buildFileMetaDataMessage({metaData: meta as FileMetaDataContent}, originalId);
+      const message = MessageBuilder.buildFileMetaDataMessage(
+        {metaData: meta as FileMetaDataContent},
+        originalId,
+        threadId,
+      );
       this.assetRepository.addToProcessQueue(message, conversation.id);
       return {message, metaData: meta as FileMetaDataContent};
     } catch (error) {
@@ -766,6 +785,7 @@ export class MessageRepository {
     messageId: string,
     asImage: boolean,
     meta: FileMetaDataContent,
+    threadId?: string | null,
   ) {
     const isAuditLogEnabled = this.teamState.isAuditLogEnabled();
 
@@ -800,6 +820,7 @@ export class MessageRepository {
             image: metadata,
           },
           messageId,
+          threadId,
         )
       : MessageBuilder.buildFileDataMessage(
           {
@@ -808,6 +829,7 @@ export class MessageRepository {
             file: {data: Buffer.from(await file.arrayBuffer())},
           },
           messageId,
+          threadId,
         );
 
     return this.sendAndInjectMessage(assetMessage, conversation, {enableEphemeral: true});
@@ -821,8 +843,13 @@ export class MessageRepository {
    * @param reason Cause for the failed upload (optional)
    * @returns Resolves when the asset failure was sent
    */
-  private sendAssetUploadFailed(conversation: Conversation, messageId: string, reason = Asset.NotUploaded.FAILED) {
-    const payload = MessageBuilder.buildFileAbortMessage({reason}, messageId);
+  private sendAssetUploadFailed(
+    conversation: Conversation,
+    messageId: string,
+    reason = Asset.NotUploaded.FAILED,
+    threadId?: string | null,
+  ) {
+    const payload = MessageBuilder.buildFileAbortMessage({reason}, messageId, threadId);
 
     return this.sendAndInjectMessage(payload, conversation);
   }
