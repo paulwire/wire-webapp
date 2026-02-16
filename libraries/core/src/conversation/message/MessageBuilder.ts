@@ -100,7 +100,7 @@ export function buildCompositeMessage(payload: IComposite, threadId?: string | n
 export class UnsupportedThreadPayloadError extends Error {
   public readonly code = 'UNSUPPORTED_THREAD_PAYLOAD';
 
-  constructor(public readonly payloadType: GenericMessageType | undefined) {
+  constructor(public readonly payloadType: string | undefined) {
     super(
       `Thread metadata can only be attached to Text, Asset, Multipart, or Composite messages. Received "${payloadType ?? 'unknown'}".`,
     );
@@ -113,7 +113,7 @@ export function attachThreadIdToMessage(message: GenericMessage, threadId?: stri
     return message;
   }
 
-  const setThreadOnPayload = (payload: {[key: string]: unknown} | null | undefined) => {
+  const setThreadOnPayload = (payload: {threadId?: string; thread_id?: string} | null | undefined) => {
     if (!payload) {
       return;
     }
@@ -123,16 +123,16 @@ export function attachThreadIdToMessage(message: GenericMessage, threadId?: stri
 
   switch (message.content) {
     case GenericMessageType.TEXT:
-      setThreadOnPayload(message.text as Text & {threadId?: string});
+      setThreadOnPayload(message.text as unknown as {threadId?: string; thread_id?: string});
       return message;
     case GenericMessageType.ASSET:
-      setThreadOnPayload(message.asset as Asset & {threadId?: string});
+      setThreadOnPayload(message.asset as unknown as {threadId?: string; thread_id?: string});
       return message;
     case GenericMessageType.MULTIPART:
-      setThreadOnPayload(message.multipart as MultiPartContent & {threadId?: string});
+      setThreadOnPayload(message.multipart as unknown as {threadId?: string; thread_id?: string});
       return message;
     case GenericMessageType.COMPOSITE:
-      setThreadOnPayload(message.composite as Composite & {threadId?: string});
+      setThreadOnPayload(message.composite as unknown as {threadId?: string; thread_id?: string});
       return message;
     default:
       throw new UnsupportedThreadPayloadError(message.content);
