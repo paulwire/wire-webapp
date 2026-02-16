@@ -248,7 +248,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
       <div
         className="panel__footer"
         data-uie-name="message-thread-composer"
-        style={{display: 'flex', gap: 8, alignItems: 'center'}}
+        style={{display: 'flex', gap: 8, alignItems: 'center', padding: '8px 12px'}}
       >
         <input
           ref={inputRef}
