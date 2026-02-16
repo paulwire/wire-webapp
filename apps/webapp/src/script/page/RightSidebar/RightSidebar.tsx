@@ -43,6 +43,7 @@ import {GroupParticipantService} from './GroupParticipantService';
 import {GroupParticipantUser} from './GroupParticipantUser';
 import {GuestServicesOptions} from './GuestServicesOptions';
 import {MessageDetails} from './MessageDetails';
+import {MessageThread} from './MessageThread/MessageThread';
 import {Notifications} from './Notifications';
 import {ParticipantDevices} from './ParticipantDevices';
 import {TimedMessages} from './TimedMessages';
@@ -74,6 +75,7 @@ export enum PanelState {
   GROUP_PARTICIPANT_USER = 'GROUP_PARTICIPANT_USER',
   GUEST_OPTIONS = 'GUEST_OPTIONS',
   MESSAGE_DETAILS = 'MESSAGE_DETAILS',
+  MESSAGE_THREAD = 'MESSAGE_THREAD',
   NOTIFICATIONS = 'NOTIFICATIONS',
   PARTICIPANT_DEVICES = 'DEVICES',
   SERVICES_OPTIONS = 'SERVICES_OPTIONS',
@@ -318,6 +320,16 @@ const RightSidebar: FC<RightSidebarProps> = ({
               userRepository={userRepository}
               onClose={closePanel}
               togglePanel={togglePanel}
+            />
+          )}
+
+          {currentState === PanelState.MESSAGE_THREAD && messageEntity && (
+            <MessageThread
+              activeConversation={activeConversation}
+              rootMessage={messageEntity}
+              onClose={closePanel}
+              messageRepository={repositories.message}
+              eventRepository={repositories.event}
             />
           )}
 

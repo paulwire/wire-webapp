@@ -67,6 +67,7 @@ interface MessagesListParams {
   selfUser: User;
   showImageDetails: (message: ContentMessage, event: React.UIEvent) => void;
   showMessageDetails: (message: MessageEntity, showReactions?: boolean) => void;
+  showMessageThread: (message: MessageEntity) => void;
   showMessageReactions: (message: MessageEntity, showReactions?: boolean) => void;
   showParticipants: (users: User[]) => void;
   showUserDetails: (user: User | ServiceEntity) => void;
@@ -86,6 +87,7 @@ export const MessagesList: FC<MessagesListParams> = ({
   onClickMessage,
   showUserDetails,
   showMessageDetails,
+  showMessageThread,
   showMessageReactions,
   showImageDetails,
   showParticipants,
@@ -334,6 +336,7 @@ export const MessagesList: FC<MessagesListParams> = ({
                   onClickMessage={onClickMessage}
                   onClickParticipants={showParticipants}
                   onClickDetails={message => showMessageDetails(message)}
+                  onClickThread={showMessageThread}
                   onClickResetSession={resetSession}
                   onClickTimestamp={async function (messageId: string) {
                     setHighlightedMessage(messageId);

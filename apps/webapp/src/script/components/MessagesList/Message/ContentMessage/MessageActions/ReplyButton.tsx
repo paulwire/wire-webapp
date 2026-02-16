@@ -31,6 +31,7 @@ interface ReplyButtonProps {
   messageFocusedTabIndex: number;
   onReplyClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onKeyPress: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
+  ariaLabel?: string;
 }
 
 const ReplyButton: FC<ReplyButtonProps> = ({
@@ -39,6 +40,7 @@ const ReplyButton: FC<ReplyButtonProps> = ({
   messageFocusedTabIndex,
   onReplyClick,
   onKeyPress,
+  ariaLabel = t('conversationContextMenuReply'),
 }) => {
   return (
     <button
@@ -50,7 +52,7 @@ const ReplyButton: FC<ReplyButtonProps> = ({
       type="button"
       tabIndex={messageFocusedTabIndex}
       data-uie-name={actionId}
-      aria-label={t('conversationContextMenuReply')}
+      aria-label={ariaLabel}
       onClick={onReplyClick}
       onKeyDown={onKeyPress}
     >

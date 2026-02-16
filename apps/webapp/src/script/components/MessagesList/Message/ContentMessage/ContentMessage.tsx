@@ -20,17 +20,22 @@
 import {useMemo, useState, useEffect, useRef} from 'react';
 
 import {QualifiedId} from '@wireapp/api-client/lib/user';
+import {amplify} from 'amplify';
 import cx from 'classnames';
 import ko from 'knockout';
+import {container} from 'tsyringe';
 
 import {OutlineCheck} from '@wireapp/react-ui-kit';
+import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {ReadIndicator} from 'Components/MessagesList/Message/ReadIndicator';
+import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
 import {useClickOutside} from 'Hooks/useClickOutside';
 import {Conversation} from 'Repositories/entity/Conversation';
 import {CompositeMessage} from 'Repositories/entity/message/CompositeMessage';
 import {ContentMessage} from 'Repositories/entity/message/ContentMessage';
 import type {FileAsset as FileAssetType} from 'Repositories/entity/message/FileAsset';
+import {EventRepository} from 'Repositories/event/EventRepository';
 import {useRelativeTimestamp} from 'src/script/hooks/useRelativeTimestamp';
 import {StatusType} from 'src/script/message/StatusType';
 import {useKoSubscribableChildren} from 'Util/ComponentUtil';
@@ -38,7 +43,13 @@ import {getMessageAriaLabel} from 'Util/conversationMessages';
 import {t} from 'Util/LocalizerUtil';
 
 import {ContentAsset} from './asset';
-import {deliveredMessageIndicator, messageBodyWrapper, messageEphemeralTimer} from './ContentMessage.styles';
+import {
+  deliveredMessageIndicator,
+  messageBodyWrapper,
+  messageEphemeralTimer,
+  threadRepliesButton,
+  threadRepliesContainer,
+} from './ContentMessage.styles';
 import {MessageActionsMenu} from './MessageActions/MessageActions';
 import {useMessageActionsState} from './MessageActions/MessageActions.state';
 import {MessageReactionsList} from './MessageActions/MessageReactions/MessageReactionsList';
@@ -93,6 +104,7 @@ export const ContentMessageComponent = ({
   isMsgElementsFocusable,
   onClickReaction,
   onClickDetails,
+  onClickThread,
   is1to1,
   isFileShareRestricted,
 }: ContentMessageProps) => {
@@ -136,10 +148,54 @@ export const ContentMessageComponent = ({
   });
 
   const [isActionMenuVisible, setActionMenuVisibility] = useState(false);
+  const [threadRepliesCount, setThreadRepliesCount] = useState(0);
   const isMenuOpen = useMessageActionsState(state => state.isMenuOpen);
+  const eventRepository = container.resolve(EventRepository);
   useEffect(() => {
     setActionMenuVisibility(isFocused || msgFocusState);
   }, [msgFocusState, isFocused]);
+
+  const canShowThreadReplies = message.isReplyable() && !message.threadId;
+
+  useEffect(() => {
+    if (!canShowThreadReplies) {
+      setThreadRepliesCount(0);
+      return;
+    }
+
+    let isSubscribed = true;
+    const threadId = message.id;
+
+    const loadRepliesCount = async () => {
+      const count = await eventRepository.eventService.countVisibleThreadReplies(conversation.id, threadId);
+      if (isSubscribed) {
+        setThreadRepliesCount(count);
+      }
+    };
+
+    const handleThreadReplySent = (payload: ThreadReplySentPayload) => {
+      if (payload.conversationId === conversation.id && payload.threadId === threadId) {
+        void loadRepliesCount();
+      }
+    };
+
+    const handleBackendEvent = (event: {conversation?: string; thread_id?: string | null}) => {
+      if (event?.conversation === conversation.id && event.thread_id === threadId) {
+        void loadRepliesCount();
+      }
+    };
+
+    void loadRepliesCount();
+
+    amplify.subscribe(THREAD_REPLY_SENT, handleThreadReplySent);
+    amplify.subscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
+
+    return () => {
+      isSubscribed = false;
+      amplify.unsubscribe(THREAD_REPLY_SENT, handleThreadReplySent);
+      amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
+    };
+  }, [canShowThreadReplies, conversation.id, eventRepository.eventService, message.id]);
 
   const isConversationReadonly = conversation.readOnlyState() !== null;
 
@@ -266,6 +322,7 @@ export const ContentMessageComponent = ({
               contextMenu={contextMenu}
               isMessageFocused={msgFocusState}
               handleReactionClick={onClickReaction}
+              onThreadClick={() => onClickThread(message)}
               reactionsTotalCount={reactions.length}
               isRemovedFromConversation={conversation.isSelfUserRemoved()}
             />
@@ -286,6 +343,21 @@ export const ContentMessageComponent = ({
           </div>
         )}
       </div>
+
+      {canShowThreadReplies && threadRepliesCount > 0 && (
+        <div css={threadRepliesContainer}>
+          <button
+            type="button"
+            data-uie-name="do-open-message-thread"
+            css={threadRepliesButton}
+            onClick={() => onClickThread(message)}
+          >
+            {threadRepliesCount === 1
+              ? t('conversationsSecondaryLineSummaryReply', {number: 1})
+              : t('conversationsSecondaryLineSummaryReplies', {number: threadRepliesCount})}
+          </button>
+        </div>
+      )}
 
       {[StatusType.FAILED, StatusType.FEDERATION_ERROR].includes(status) && (
         <CompleteFailureToSendWarning

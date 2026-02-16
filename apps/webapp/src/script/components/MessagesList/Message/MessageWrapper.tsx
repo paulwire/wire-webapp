@@ -78,6 +78,7 @@ export const MessageWrapper = ({
   onClickTimestamp,
   onClickParticipants,
   onClickDetails,
+  onClickThread,
   onClickResetSession,
   onClickCancelRequest,
   messageRepository,
@@ -216,6 +217,7 @@ export const MessageWrapper = ({
         onClickInvitePeople={onClickInvitePeople}
         onClickParticipants={onClickParticipants}
         onClickDetails={onClickDetails}
+        onClickThread={onClickThread}
         onRetry={onRetry}
         isFocused={isFocused}
         isMsgElementsFocusable={isMsgElementsFocusable}
