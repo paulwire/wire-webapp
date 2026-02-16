@@ -47,8 +47,35 @@ import {TeamState} from 'Repositories/team/TeamState';
 import {isContentMessage} from 'src/script/guards/Message';
 import {useRoveFocus} from 'src/script/hooks/useRoveFocus';
 import {ActionsViewModel} from 'src/script/view_model/ActionsViewModel';
+import {getLogger} from 'Util/Logger';
 
 import {PanelHeader} from '../PanelHeader';
+
+type ThreadBackendEvent = {
+  conversation?: string;
+  data?: {
+    thread_id?: string | null;
+    thread_root_message_id?: string | null;
+    threadId?: string | null;
+  };
+  thread_id?: string | null;
+  thread_root_message_id?: string | null;
+  threadId?: string | null;
+};
+
+const logger = getLogger('MessageThread');
+const normalizeThreadId = (threadId?: string | null): string | null =>
+  typeof threadId === 'string' && threadId.length > 0 ? threadId : null;
+const getBackendEventThreadId = (event?: ThreadBackendEvent): string | null =>
+  normalizeThreadId(
+    event?.thread_id ??
+      event?.threadId ??
+      event?.thread_root_message_id ??
+      event?.data?.thread_id ??
+      event?.data?.threadId ??
+      event?.data?.thread_root_message_id ??
+      null,
+  );
 
 interface MessageThreadProps {
   activeConversation: Conversation;
@@ -93,23 +120,36 @@ export const MessageThread: FC<MessageThreadProps> = ({
   const [giphyQuery, setGiphyQuery] = useState('');
   const threadListRef = useRef<HTMLDivElement | null>(null);
   const eventMapperRef = useRef(new EventMapper());
+  const latestLoadRequestIdRef = useRef(0);
+  const isMountedRef = useRef(true);
   const [isMsgElementsFocusable, setMsgElementsFocusable] = useState(false);
 
   const loadThreadReplies = useCallback(async () => {
+    const requestId = ++latestLoadRequestIdRef.current;
+
     if (!threadId || !activeConversation?.id) {
       setThreadReplies([]);
       return;
     }
 
-    const events = await eventRepository.eventService.loadThreadEvents(activeConversation.id, threadId);
-    const mappedMessages = eventMapperRef.current.mapJsonEvents(events, activeConversation);
+    try {
+      const events = await eventRepository.eventService.loadThreadEvents(activeConversation.id, threadId);
+      const mappedMessages = eventMapperRef.current.mapJsonEvents(events, activeConversation);
 
-    const contentMessages = mappedMessages.filter(isContentMessage);
-    const messagesWithUsers = await Promise.all(
-      contentMessages.map(message => messageRepository.ensureMessageSender(message)),
-    );
+      const contentMessages = mappedMessages.filter(isContentMessage);
+      const messagesWithUsers = await Promise.all(
+        contentMessages.map(message => messageRepository.ensureMessageSender(message)),
+      );
 
-    setThreadReplies(messagesWithUsers);
+      if (isMountedRef.current && requestId === latestLoadRequestIdRef.current) {
+        setThreadReplies(messagesWithUsers);
+      }
+    } catch (error) {
+      logger.warn(
+        `Failed to load thread replies for conversation '${activeConversation.id}' and thread '${threadId}'`,
+        error,
+      );
+    }
   }, [activeConversation, eventRepository.eventService, messageRepository, threadId]);
 
   const threadMessages = useMemo(() => {
@@ -139,14 +179,27 @@ export const MessageThread: FC<MessageThreadProps> = ({
   }, [loadThreadReplies]);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
+    return () => {
+      isMountedRef.current = false;
+      latestLoadRequestIdRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => {
     const handleReply = (payload: ThreadReplySentPayload) => {
       if (payload.conversationId === activeConversation.id && payload.threadId === threadId) {
         void loadThreadReplies();
       }
     };
 
-    const handleEventFromBackend = (event: {conversation?: string}) => {
-      if (event?.conversation === activeConversation.id) {
+    const handleEventFromBackend = (event: ThreadBackendEvent) => {
+      if (event?.conversation !== activeConversation.id) {
+        return;
+      }
+
+      if (getBackendEventThreadId(event) === threadId) {
         void loadThreadReplies();
       }
     };
