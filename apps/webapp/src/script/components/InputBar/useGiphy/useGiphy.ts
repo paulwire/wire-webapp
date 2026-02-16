@@ -34,6 +34,7 @@ interface UseGiphyProps {
   generateQuote: () => Promise<OutgoingQuote | undefined>;
   messageRepository: MessageRepository;
   conversation: Conversation;
+  threadId?: string | null;
   cancelMesssageEditing: () => void;
 }
 
@@ -44,6 +45,7 @@ export const useGiphy = ({
   generateQuote,
   messageRepository,
   conversation,
+  threadId,
   cancelMesssageEditing,
 }: UseGiphyProps) => {
   const isMessageFormatButtonsFlagEnabled = Config.getConfig().FEATURE.ENABLE_MESSAGE_FORMAT_BUTTONS;
@@ -60,11 +62,11 @@ export const useGiphy = ({
   const sendGiphy = useCallback(
     (gifUrl: string, tag: string): void => {
       void generateQuote().then(quoteEntity => {
-        void messageRepository.sendGif(conversation, gifUrl, tag, quoteEntity);
+        void messageRepository.sendGif(conversation, gifUrl, tag, quoteEntity, threadId);
         cancelMesssageEditing();
       });
     },
-    [cancelMesssageEditing, conversation, generateQuote, messageRepository],
+    [cancelMesssageEditing, conversation, generateQuote, messageRepository, threadId],
   );
 
   useEffect(() => {

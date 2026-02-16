@@ -27,13 +27,14 @@ import {IgnoreOutsideClickWrapper} from '../util/clickHandlers';
 
 interface InputBarContainerProps {
   children: ReactNode;
+  disableRightPanelOffset?: boolean;
 }
 
-export const InputBarContainer = ({children}: InputBarContainerProps) => {
+export const InputBarContainer = ({children, disableRightPanelOffset = false}: InputBarContainerProps) => {
   const {rightSidebar} = useAppMainState.getState();
   const lastItem = rightSidebar.history.length - 1;
   const currentState = rightSidebar.history[lastItem];
-  const isRightSidebarOpen = !!currentState;
+  const isRightSidebarOpen = !disableRightPanelOffset && !!currentState;
 
   return (
     <IgnoreOutsideClickWrapper

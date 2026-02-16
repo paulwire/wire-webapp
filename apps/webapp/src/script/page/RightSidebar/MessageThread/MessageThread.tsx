@@ -24,6 +24,7 @@ import {amplify} from 'amplify';
 import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {FadingScrollbar} from 'Components/FadingScrollbar';
+import {Giphy} from 'Components/Giphy';
 import {InputBar} from 'Components/InputBar';
 import {Message as MessageComponent} from 'Components/MessagesList/Message';
 import {MarkerComponent} from 'Components/MessagesList/Message/Marker';
@@ -38,6 +39,7 @@ import {ContentMessage} from 'Repositories/entity/message/ContentMessage';
 import {Message as MessageEntity} from 'Repositories/entity/message/Message';
 import {User} from 'Repositories/entity/User';
 import {EventRepository} from 'Repositories/event/EventRepository';
+import {GiphyRepository} from 'Repositories/extension/GiphyRepository';
 import {PropertiesRepository} from 'Repositories/properties/PropertiesRepository';
 import {SearchRepository} from 'Repositories/search/SearchRepository';
 import {StorageRepository} from 'Repositories/storage';
@@ -56,6 +58,7 @@ interface MessageThreadProps {
   cellsRepository: CellsRepository;
   messageRepository: MessageRepository;
   eventRepository: EventRepository;
+  giphyRepository: GiphyRepository;
   propertiesRepository: PropertiesRepository;
   searchRepository: SearchRepository;
   storageRepository: StorageRepository;
@@ -73,6 +76,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
   cellsRepository,
   messageRepository,
   eventRepository,
+  giphyRepository,
   propertiesRepository,
   searchRepository,
   storageRepository,
@@ -85,6 +89,8 @@ export const MessageThread: FC<MessageThreadProps> = ({
   const threadId = rootMessage.threadId ?? rootMessage.id;
 
   const [threadReplies, setThreadReplies] = useState<ContentMessage[]>([]);
+  const [isGiphyModalOpen, setIsGiphyModalOpen] = useState(false);
+  const [giphyQuery, setGiphyQuery] = useState('');
   const threadListRef = useRef<HTMLDivElement | null>(null);
   const eventMapperRef = useRef(new EventMapper());
   const [isMsgElementsFocusable, setMsgElementsFocusable] = useState(false);
@@ -159,6 +165,11 @@ export const MessageThread: FC<MessageThreadProps> = ({
   }, [groupedThreadMessages.length, threadId]);
 
   const repliesTitle = `${threadReplies.length} ${threadReplies.length === 1 ? 'reply' : 'replies'}`;
+  const openGiphy = useCallback((text: string) => {
+    setGiphyQuery(text);
+    setIsGiphyModalOpen(true);
+  }, []);
+  const closeGiphy = useCallback(() => setIsGiphyModalOpen(false), []);
   const uploadImages = useCallback(
     (images: File[]) => messageRepository.uploadImages(activeConversation, images, threadId),
     [activeConversation, messageRepository, threadId],
@@ -247,33 +258,35 @@ export const MessageThread: FC<MessageThreadProps> = ({
         </div>
       </FadingScrollbar>
 
-      <div className="panel__footer" data-uie-name="message-thread-composer" style={{padding: '8px 12px'}}>
-        <div style={{paddingLeft: 6, paddingRight: 6}}>
-          <InputBar
-            key={`${activeConversation.id}-${threadId}`}
-            threadId={threadId}
-            conversation={activeConversation}
-            conversationRepository={conversationRepository}
-            cellsRepository={cellsRepository}
-            eventRepository={eventRepository}
-            messageRepository={messageRepository}
-            openGiphy={() => undefined}
-            propertiesRepository={propertiesRepository}
-            searchRepository={searchRepository}
-            storageRepository={storageRepository}
-            teamState={teamState}
-            selfUser={selfUser}
-            isCellsEnabled={isCellsEnabled}
-            onShiftTab={() => setMsgElementsFocusable(false)}
-            uploadDroppedFiles={uploadDroppedFiles}
-            uploadImages={uploadImages}
-            uploadFiles={uploadFiles}
-            uploadPastedFiles={file => uploadDroppedFiles([file])}
-            onCellImageUpload={() => undefined}
-            onCellAssetUpload={() => undefined}
-          />
-        </div>
+      <div className="panel__footer" data-uie-name="message-thread-composer" style={{padding: '8px 8px 10px'}}>
+        <InputBar
+          key={`${activeConversation.id}-${threadId}`}
+          threadId={threadId}
+          disableRightPanelOffset
+          conversation={activeConversation}
+          conversationRepository={conversationRepository}
+          cellsRepository={cellsRepository}
+          eventRepository={eventRepository}
+          messageRepository={messageRepository}
+          openGiphy={openGiphy}
+          propertiesRepository={propertiesRepository}
+          searchRepository={searchRepository}
+          storageRepository={storageRepository}
+          teamState={teamState}
+          selfUser={selfUser}
+          isCellsEnabled={isCellsEnabled}
+          onShiftTab={() => setMsgElementsFocusable(false)}
+          uploadDroppedFiles={uploadDroppedFiles}
+          uploadImages={uploadImages}
+          uploadFiles={uploadFiles}
+          uploadPastedFiles={file => uploadDroppedFiles([file])}
+          onCellImageUpload={() => undefined}
+          onCellAssetUpload={() => undefined}
+        />
       </div>
+      {isGiphyModalOpen && giphyQuery && (
+        <Giphy giphyRepository={giphyRepository} inputValue={giphyQuery} onClose={closeGiphy} />
+      )}
     </div>
   );
 };

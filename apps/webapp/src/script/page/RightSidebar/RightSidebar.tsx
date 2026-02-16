@@ -340,6 +340,7 @@ const RightSidebar: FC<RightSidebarProps> = ({
               cellsRepository={repositories.cells}
               messageRepository={repositories.message}
               eventRepository={repositories.event}
+              giphyRepository={repositories.giphy}
               propertiesRepository={repositories.properties}
               searchRepository={repositories.search}
               storageRepository={repositories.storage}

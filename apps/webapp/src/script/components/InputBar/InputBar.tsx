@@ -74,6 +74,7 @@ const CONFIG = {
 
 interface InputBarProps {
   threadId?: string | null;
+  disableRightPanelOffset?: boolean;
   readonly conversation: Conversation;
   readonly conversationRepository: ConversationRepository;
   readonly cellsRepository: CellsRepository;
@@ -97,6 +98,7 @@ interface InputBarProps {
 
 export const InputBar = ({
   threadId,
+  disableRightPanelOffset = false,
   conversation,
   conversationRepository,
   cellsRepository,
@@ -255,6 +257,7 @@ export const InputBar = ({
     generateQuote,
     messageRepository,
     conversation,
+    threadId,
     cancelMesssageEditing,
   });
 
@@ -270,7 +273,7 @@ export const InputBar = ({
 
   return (
     <div ref={wrapperRef}>
-      <InputBarContainer>
+      <InputBarContainer disableRightPanelOffset={disableRightPanelOffset}>
         {isTypingIndicatorEnabled && <TypingIndicator conversationId={conversation.id} />}
 
         {classifiedDomains && !isConnectionRequest && (
