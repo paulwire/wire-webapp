@@ -22,12 +22,23 @@ test.describe('Thread', () => {
 
     await expect(pages.conversation().messageThreadPanel).toBeVisible();
     await expect(pages.conversation().messageThreadInput).toBeFocused();
+    await expect(pages.conversation().page.getByTestId('message-thread-title')).toContainText('Thread - 0 replies');
 
     await pages.conversation().messageThreadInput.fill('Thread reply 1');
     await pages.conversation().messageThreadInput.press('Enter');
 
+    await expect(pages.conversation().page.getByTestId('message-thread-title')).toContainText('Thread - 1 reply');
     await expect(pages.conversation().messageThreadPanel.getByText('Thread reply 1')).toBeVisible();
     await expect(pages.conversation().messageThreadInput).toBeFocused();
+
+    await pages.conversation().messageThreadInput.fill('Thread reply 2');
+    await pages.conversation().messageThreadInput.press('Enter');
+    await expect(pages.conversation().page.getByTestId('message-thread-title')).toContainText('Thread - 2 replies');
+
+    const threadMessages = pages.conversation().messageThreadPanel.getByTestId('item-message');
+    await expect(threadMessages.nth(0)).toContainText('Thread root message');
+    await expect(threadMessages.nth(1)).toContainText('Thread reply 1');
+    await expect(threadMessages.nth(2)).toContainText('Thread reply 2');
   });
 
   test('I can open thread from the replies badge under the root message', async ({createPage}) => {
