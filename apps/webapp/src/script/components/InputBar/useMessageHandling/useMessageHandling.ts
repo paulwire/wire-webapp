@@ -41,6 +41,7 @@ import {useOutsideInputClick} from './useOutsideInputClick/useOutsideInputClick'
 import {MessageContent} from '../common/messageContent/messageContent';
 
 interface UseMessageHandlingProps {
+  threadId?: string | null;
   messageContent: MessageContent;
   conversation: Conversation;
   conversationRepository: ConversationRepository;
@@ -54,6 +55,7 @@ interface UseMessageHandlingProps {
 }
 
 export const useMessageHandling = ({
+  threadId,
   messageContent,
   conversation,
   conversationRepository,
@@ -117,6 +119,7 @@ export const useMessageHandling = ({
   }, [cancelMessageEditing, draftState, replyMessageCallback]);
 
   const {sendMessage, generateQuote, isSending, isSendingDisabled} = useMessageSend({
+    threadId,
     replyMessageEntity,
     eventRepository,
     messageRepository,

@@ -73,6 +73,7 @@ const CONFIG = {
 };
 
 interface InputBarProps {
+  threadId?: string | null;
   readonly conversation: Conversation;
   readonly conversationRepository: ConversationRepository;
   readonly cellsRepository: CellsRepository;
@@ -95,6 +96,7 @@ interface InputBarProps {
 }
 
 export const InputBar = ({
+  threadId,
   conversation,
   conversationRepository,
   cellsRepository,
@@ -222,6 +224,7 @@ export const InputBar = ({
     isSending,
     isSendingDisabled,
   } = useMessageHandling({
+    threadId,
     messageContent,
     conversation,
     conversationRepository,
