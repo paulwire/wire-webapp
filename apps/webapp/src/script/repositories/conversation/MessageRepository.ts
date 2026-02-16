@@ -563,8 +563,8 @@ export class MessageRepository {
    *
    * @param conversationEntity Conversation to post the images
    */
-  public uploadImages(conversationEntity: Conversation, images: Blob[]) {
-    this.uploadFiles(conversationEntity, images, true);
+  public uploadImages(conversationEntity: Conversation, images: Blob[], threadId?: string | null) {
+    this.uploadFiles(conversationEntity, images, true, threadId);
   }
 
   /**
@@ -574,9 +574,9 @@ export class MessageRepository {
    * @param files files
    * @param asImage whether or not the file should be treated as an image
    */
-  public uploadFiles(conversationEntity: Conversation, files: Blob[], asImage?: boolean) {
+  public uploadFiles(conversationEntity: Conversation, files: Blob[], asImage?: boolean, threadId?: string | null) {
     if (this.canUploadAssetsToConversation(conversationEntity)) {
-      Array.from(files).forEach(file => this.uploadFile(conversationEntity, file, asImage));
+      Array.from(files).forEach(file => this.uploadFile(conversationEntity, file, asImage, undefined, threadId));
     }
   }
 
