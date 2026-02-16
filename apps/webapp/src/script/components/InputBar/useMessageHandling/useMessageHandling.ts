@@ -203,7 +203,7 @@ export const useMessageHandling = ({
     amplify.subscribe(WebAppEvents.CONVERSATION.MESSAGE.REPLY, replyMessage);
 
     return () => {
-      amplify.unsubscribeAll(WebAppEvents.CONVERSATION.MESSAGE.REPLY);
+      amplify.unsubscribe(WebAppEvents.CONVERSATION.MESSAGE.REPLY, replyMessage);
     };
   }, [replyMessage]);
 

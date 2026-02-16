@@ -73,9 +73,9 @@ export const useGiphy = ({
     amplify.subscribe(WebAppEvents.EXTENSIONS.GIPHY.SEND, sendGiphy);
 
     return () => {
-      amplify.unsubscribeAll(WebAppEvents.EXTENSIONS.GIPHY.SEND);
+      amplify.unsubscribe(WebAppEvents.EXTENSIONS.GIPHY.SEND, sendGiphy);
     };
-  }, [sendGiphy, cancelMesssageEditing]);
+  }, [sendGiphy]);
 
   return {
     showGiphyButton,
