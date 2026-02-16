@@ -334,6 +334,8 @@ const RightSidebar: FC<RightSidebarProps> = ({
               onClose={closePanel}
               messageRepository={repositories.message}
               eventRepository={repositories.event}
+              selfUser={selfUser}
+              actionsViewModel={actionsViewModel}
             />
           )}
 

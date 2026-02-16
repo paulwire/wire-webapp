@@ -24,40 +24,31 @@ import {amplify} from 'amplify';
 import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {FadingScrollbar} from 'Components/FadingScrollbar';
+import {Message as MessageComponent} from 'Components/MessagesList/Message';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
 import {EventMapper} from 'Repositories/conversation/EventMapper';
 import {MessageRepository} from 'Repositories/conversation/MessageRepository';
 import {Conversation} from 'Repositories/entity/Conversation';
 import {ContentMessage} from 'Repositories/entity/message/ContentMessage';
-import {Message} from 'Repositories/entity/message/Message';
+import {Message as MessageEntity} from 'Repositories/entity/message/Message';
+import {User} from 'Repositories/entity/User';
 import {EventRepository} from 'Repositories/event/EventRepository';
 import {isContentMessage} from 'src/script/guards/Message';
+import {useRoveFocus} from 'src/script/hooks/useRoveFocus';
+import {ActionsViewModel} from 'src/script/view_model/ActionsViewModel';
 import {t} from 'Util/LocalizerUtil';
-import {formatTimeShort} from 'Util/TimeUtil';
 
 import {PanelHeader} from '../PanelHeader';
 
 interface MessageThreadProps {
   activeConversation: Conversation;
-  rootMessage: Message;
+  rootMessage: MessageEntity;
   onClose: () => void;
   messageRepository: MessageRepository;
   eventRepository: EventRepository;
+  selfUser: User;
+  actionsViewModel: ActionsViewModel;
 }
-
-const extractMessageText = (message: ContentMessage): string => {
-  const firstAsset = message.getFirstAsset();
-
-  if ('text' in firstAsset && typeof firstAsset.text === 'string' && firstAsset.text.length > 0) {
-    return firstAsset.text;
-  }
-
-  if ('file_name' in firstAsset && typeof firstAsset.file_name === 'string' && firstAsset.file_name.length > 0) {
-    return firstAsset.file_name;
-  }
-
-  return t('replyBarSingleAttachment');
-};
 
 export const MessageThread: FC<MessageThreadProps> = ({
   activeConversation,
@@ -65,6 +56,8 @@ export const MessageThread: FC<MessageThreadProps> = ({
   onClose,
   messageRepository,
   eventRepository,
+  selfUser,
+  actionsViewModel,
 }) => {
   const rootContentMessage = isContentMessage(rootMessage) ? rootMessage : null;
   const threadId = rootMessage.threadId ?? rootMessage.id;
@@ -73,7 +66,9 @@ export const MessageThread: FC<MessageThreadProps> = ({
   const [draft, setDraft] = useState('');
   const [isSending, setIsSending] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const threadListRef = useRef<HTMLDivElement | null>(null);
   const eventMapperRef = useRef(new EventMapper());
+  const [isMsgElementsFocusable, setMsgElementsFocusable] = useState(false);
 
   const loadThreadReplies = useCallback(async () => {
     if (!threadId || !activeConversation?.id) {
@@ -91,6 +86,24 @@ export const MessageThread: FC<MessageThreadProps> = ({
 
     setThreadReplies(messagesWithUsers);
   }, [activeConversation, eventRepository.eventService, messageRepository, threadId]);
+
+  const threadMessages = useMemo(() => {
+    if (!rootContentMessage) {
+      return [];
+    }
+
+    const sortedReplies = [...threadReplies].sort(
+      (firstMessage, secondMessage) =>
+        firstMessage.timestamp() - secondMessage.timestamp() || firstMessage.id.localeCompare(secondMessage.id),
+    );
+    return [rootContentMessage, ...sortedReplies.filter(reply => reply.id !== rootContentMessage.id)];
+  }, [rootContentMessage, threadReplies]);
+
+  const {
+    focusedId,
+    handleKeyDown: handleRoveKeyDown,
+    setFocusedId,
+  } = useRoveFocus(threadMessages.map(message => message.id));
 
   useEffect(() => {
     void loadThreadReplies();
@@ -125,6 +138,10 @@ export const MessageThread: FC<MessageThreadProps> = ({
     return () => window.clearTimeout(timeoutId);
   }, [threadId]);
 
+  useEffect(() => {
+    threadListRef.current?.scrollTo({top: threadListRef.current.scrollHeight});
+  }, [threadMessages.length, threadId]);
+
   const handleSend = useCallback(async () => {
     const trimmedMessage = draft.trim();
     if (!trimmedMessage.length || isSending) {
@@ -143,11 +160,11 @@ export const MessageThread: FC<MessageThreadProps> = ({
       });
 
       setDraft('');
-      inputRef.current?.focus();
       amplify.publish(THREAD_REPLY_SENT, {conversationId: activeConversation.id, threadId});
       void loadThreadReplies();
     } finally {
       setIsSending(false);
+      window.setTimeout(() => inputRef.current?.focus(), 0);
     }
   }, [activeConversation, draft, isSending, loadThreadReplies, messageRepository, threadId]);
 
@@ -161,15 +178,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
     [handleSend],
   );
 
-  const rootMessageTimestamp = useMemo(
-    () => (rootContentMessage ? formatTimeShort(rootContentMessage.timestamp()) : ''),
-    [rootContentMessage],
-  );
-
-  const repliesTitle =
-    threadReplies.length === 1
-      ? t('conversationsSecondaryLineSummaryReply', {number: 1})
-      : t('conversationsSecondaryLineSummaryReplies', {number: threadReplies.length});
+  const repliesTitle = `${threadReplies.length} ${threadReplies.length === 1 ? 'reply' : 'replies'}`;
 
   if (!rootContentMessage) {
     return null;
@@ -180,33 +189,45 @@ export const MessageThread: FC<MessageThreadProps> = ({
       <PanelHeader
         onClose={onClose}
         showBackArrow={false}
-        title={t('conversationContextMenuReply')}
+        title={`Thread - ${repliesTitle}`}
         titleDataUieName="message-thread-title"
         shouldFocusFirstButton={false}
       />
 
-      <FadingScrollbar className="panel__content" style={{flexGrow: 1}}>
-        <div data-uie-name="message-thread-root" style={{padding: '16px 16px 8px'}}>
-          <div style={{fontWeight: 600, marginBottom: 4}}>{rootContentMessage.senderName()}</div>
-          <div style={{marginBottom: 4, overflowWrap: 'anywhere'}}>{extractMessageText(rootContentMessage)}</div>
-          <div className="text-foreground" style={{fontSize: 12}}>
-            {rootMessageTimestamp}
-          </div>
-        </div>
-
-        <div data-uie-name="message-thread-replies" style={{padding: '8px 16px 16px'}}>
-          <div className="text-foreground" style={{fontSize: 12, marginBottom: 8}}>
-            {repliesTitle}
-          </div>
-
-          {threadReplies.map(reply => (
-            <div key={reply.id} data-uie-name="message-thread-reply-item" style={{marginBottom: 12}}>
-              <div style={{fontWeight: 600, marginBottom: 2}}>{reply.senderName()}</div>
-              <div style={{overflowWrap: 'anywhere'}}>{extractMessageText(reply)}</div>
-              <div className="text-foreground" style={{fontSize: 12}}>
-                {formatTimeShort(reply.timestamp())}
-              </div>
-            </div>
+      <FadingScrollbar ref={threadListRef} className="message-list panel__content" style={{flexGrow: 1}}>
+        <div className="messages" data-uie-name="message-thread-messages">
+          {threadMessages.map((message, index) => (
+            <MessageComponent
+              key={`${message.id}-${message.timestamp()}`}
+              message={message}
+              hideHeader={index > 0 && threadMessages[index - 1].from === message.from}
+              messageActions={actionsViewModel}
+              conversation={activeConversation}
+              hasReadReceiptsTurnedOn={false}
+              isLastDeliveredMessage={false}
+              isHighlighted={false}
+              isSelfTemporaryGuest={selfUser.isTemporaryGuest()}
+              messageRepository={messageRepository}
+              onClickAvatar={() => undefined}
+              onClickCancelRequest={() => undefined}
+              onClickImage={() => undefined}
+              onClickInvitePeople={() => undefined}
+              onClickReactionDetails={() => undefined}
+              onClickMessage={() => true}
+              onClickParticipants={() => undefined}
+              onClickDetails={() => undefined}
+              onClickThread={() => undefined}
+              onClickResetSession={() => undefined}
+              onClickTimestamp={() => undefined}
+              selfId={selfUser.qualifiedId}
+              shouldShowInvitePeople={false}
+              isFocused={focusedId === message.id}
+              handleFocus={setFocusedId}
+              handleArrowKeyDown={handleRoveKeyDown}
+              isMsgElementsFocusable={isMsgElementsFocusable}
+              setMsgElementsFocusable={setMsgElementsFocusable}
+              showThreadSummary={false}
+            />
           ))}
         </div>
       </FadingScrollbar>

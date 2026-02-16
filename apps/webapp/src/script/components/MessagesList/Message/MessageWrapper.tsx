@@ -85,6 +85,7 @@ export const MessageWrapper = ({
   messageActions,
   teamState = container.resolve(TeamState),
   isMsgElementsFocusable,
+  showThreadSummary = true,
 }: MessageParams) => {
   const findMessage = async (conversation: Conversation, messageId: string) => {
     const event =
@@ -224,6 +225,7 @@ export const MessageWrapper = ({
         onClickReaction={handleReactionClick}
         is1to1={conversation.is1to1()}
         isFileShareRestricted={isFileShareRestricted}
+        showThreadSummary={showThreadSummary}
       />
     );
   }

@@ -81,6 +81,7 @@ export interface MessageParams extends MessageActions {
   handleArrowKeyDown: (e: React.KeyboardEvent) => void;
   isMsgElementsFocusable: boolean;
   setMsgElementsFocusable: (isMsgElementsFocusable: boolean) => void;
+  showThreadSummary?: boolean;
 }
 
 export const Message = (props: MessageParams & {scrollTo?: ScrollToElement}) => {

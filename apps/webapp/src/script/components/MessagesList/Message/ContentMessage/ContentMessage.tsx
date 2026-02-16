@@ -83,6 +83,7 @@ export interface ContentMessageProps extends Omit<MessageActions, 'onClickResetS
   onClickReaction: (emoji: string) => void;
   is1to1?: boolean;
   isFileShareRestricted: boolean;
+  showThreadSummary?: boolean;
 }
 
 export const ContentMessageComponent = ({
@@ -107,6 +108,7 @@ export const ContentMessageComponent = ({
   onClickThread,
   is1to1,
   isFileShareRestricted,
+  showThreadSummary = true,
 }: ContentMessageProps) => {
   const messageRef = useRef<HTMLDivElement | null>(null);
 
@@ -155,7 +157,7 @@ export const ContentMessageComponent = ({
     setActionMenuVisibility(isFocused || msgFocusState);
   }, [msgFocusState, isFocused]);
 
-  const canShowThreadReplies = message.isReplyable() && !message.threadId;
+  const canShowThreadReplies = showThreadSummary && message.isReplyable() && !message.threadId;
 
   useEffect(() => {
     if (!canShowThreadReplies) {
