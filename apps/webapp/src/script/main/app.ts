@@ -410,8 +410,7 @@ export class App {
         selfUser = await this.repository.user.getSelf([{position: 'App.initiateSelfUser', vendor: 'webapp'}]);
       } catch (error) {
         this.logger.error('Could not get self user', error);
-        await this.repository.lifeCycle.logout(SIGN_OUT_REASON.SESSION_EXPIRED, false);
-        return undefined;
+        throw new AccessTokenError(AccessTokenError.TYPE.REQUEST_FORBIDDEN, 'Session has expired');
       }
 
       this.initializeCells({cellsRepository, selfUser});
