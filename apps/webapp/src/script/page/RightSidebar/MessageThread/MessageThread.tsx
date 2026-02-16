@@ -24,8 +24,11 @@ import {amplify} from 'amplify';
 import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {FadingScrollbar} from 'Components/FadingScrollbar';
+import {SendMessageButton} from 'Components/InputBar/InputBarControls/SendMessageButton/SendMessageButton';
 import {Message as MessageComponent} from 'Components/MessagesList/Message';
+import {MarkerComponent} from 'Components/MessagesList/Message/Marker';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
+import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/messagesGroup';
 import {EventMapper} from 'Repositories/conversation/EventMapper';
 import {MessageRepository} from 'Repositories/conversation/MessageRepository';
 import {Conversation} from 'Repositories/entity/Conversation';
@@ -104,6 +107,10 @@ export const MessageThread: FC<MessageThreadProps> = ({
     handleKeyDown: handleRoveKeyDown,
     setFocusedId,
   } = useRoveFocus(threadMessages.map(message => message.id));
+  const groupedThreadMessages = useMemo(
+    () => groupMessagesBySenderAndTime(threadMessages, Number.MAX_SAFE_INTEGER),
+    [threadMessages],
+  );
 
   useEffect(() => {
     void loadThreadReplies();
@@ -116,8 +123,8 @@ export const MessageThread: FC<MessageThreadProps> = ({
       }
     };
 
-    const handleEventFromBackend = (event: {conversation?: string; thread_id?: string | null}) => {
-      if (event?.conversation === activeConversation.id && event.thread_id === threadId) {
+    const handleEventFromBackend = (event: {conversation?: string}) => {
+      if (event?.conversation === activeConversation.id) {
         void loadThreadReplies();
       }
     };
@@ -140,7 +147,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
 
   useEffect(() => {
     threadListRef.current?.scrollTo({top: threadListRef.current.scrollHeight});
-  }, [threadMessages.length, threadId]);
+  }, [groupedThreadMessages.length, threadId]);
 
   const handleSend = useCallback(async () => {
     const trimmedMessage = draft.trim();
@@ -196,39 +203,45 @@ export const MessageThread: FC<MessageThreadProps> = ({
 
       <FadingScrollbar ref={threadListRef} className="message-list panel__content" style={{flexGrow: 1}}>
         <div className="messages" data-uie-name="message-thread-messages">
-          {threadMessages.map((message, index) => (
-            <MessageComponent
-              key={`${message.id}-${message.timestamp()}`}
-              message={message}
-              hideHeader={index > 0 && threadMessages[index - 1].from === message.from}
-              messageActions={actionsViewModel}
-              conversation={activeConversation}
-              hasReadReceiptsTurnedOn={false}
-              isLastDeliveredMessage={false}
-              isHighlighted={false}
-              isSelfTemporaryGuest={selfUser.isTemporaryGuest()}
-              messageRepository={messageRepository}
-              onClickAvatar={() => undefined}
-              onClickCancelRequest={() => undefined}
-              onClickImage={() => undefined}
-              onClickInvitePeople={() => undefined}
-              onClickReactionDetails={() => undefined}
-              onClickMessage={() => true}
-              onClickParticipants={() => undefined}
-              onClickDetails={() => undefined}
-              onClickThread={() => undefined}
-              onClickResetSession={() => undefined}
-              onClickTimestamp={() => undefined}
-              selfId={selfUser.qualifiedId}
-              shouldShowInvitePeople={false}
-              isFocused={focusedId === message.id}
-              handleFocus={setFocusedId}
-              handleArrowKeyDown={handleRoveKeyDown}
-              isMsgElementsFocusable={isMsgElementsFocusable}
-              setMsgElementsFocusable={setMsgElementsFocusable}
-              showThreadSummary={false}
-            />
-          ))}
+          {groupedThreadMessages.flatMap(group => {
+            if (isMarker(group)) {
+              return <MarkerComponent key={`${group.type}-${group.timestamp}`} marker={group} />;
+            }
+
+            return group.messages.map(message => (
+              <MessageComponent
+                key={`${message.id}-${message.timestamp()}`}
+                message={message}
+                hideHeader={message.timestamp() !== group.firstMessageTimestamp}
+                messageActions={actionsViewModel}
+                conversation={activeConversation}
+                hasReadReceiptsTurnedOn={false}
+                isLastDeliveredMessage={false}
+                isHighlighted={false}
+                isSelfTemporaryGuest={selfUser.isTemporaryGuest()}
+                messageRepository={messageRepository}
+                onClickAvatar={() => undefined}
+                onClickCancelRequest={() => undefined}
+                onClickImage={() => undefined}
+                onClickInvitePeople={() => undefined}
+                onClickReactionDetails={() => undefined}
+                onClickMessage={() => true}
+                onClickParticipants={() => undefined}
+                onClickDetails={() => undefined}
+                onClickThread={() => undefined}
+                onClickResetSession={() => undefined}
+                onClickTimestamp={() => undefined}
+                selfId={selfUser.qualifiedId}
+                shouldShowInvitePeople={false}
+                isFocused={focusedId === message.id}
+                handleFocus={setFocusedId}
+                handleArrowKeyDown={handleRoveKeyDown}
+                isMsgElementsFocusable={isMsgElementsFocusable}
+                setMsgElementsFocusable={setMsgElementsFocusable}
+                showThreadSummary={false}
+              />
+            ));
+          })}
         </div>
       </FadingScrollbar>
 
@@ -240,7 +253,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
         <input
           ref={inputRef}
           data-uie-name="input-thread-message"
-          className="input"
+          className="conversation-input-bar-text"
           type="text"
           value={draft}
           onChange={event => setDraft(event.target.value)}
@@ -249,15 +262,13 @@ export const MessageThread: FC<MessageThreadProps> = ({
           disabled={isSending}
           style={{flexGrow: 1}}
         />
-        <button
-          type="button"
-          data-uie-name="do-send-thread-message"
-          className="button button--secondary"
-          onClick={() => void handleSend()}
-          disabled={isSending || !draft.trim().length}
-        >
-          Send
-        </button>
+        <div data-uie-name="do-send-thread-message" style={{display: 'flex'}}>
+          <SendMessageButton
+            isDisabled={isSending || !draft.trim().length}
+            isLoading={isSending}
+            onSend={() => void handleSend()}
+          />
+        </div>
       </div>
     </div>
   );

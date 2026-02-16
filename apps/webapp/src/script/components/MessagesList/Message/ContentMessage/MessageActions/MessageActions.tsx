@@ -24,6 +24,7 @@ import ko from 'knockout';
 
 import {WebAppEvents} from '@wireapp/webapp-events';
 
+import * as Icon from 'Components/Icon';
 import {useClickOutside} from 'Hooks/useClickOutside';
 import {ContentMessage} from 'Repositories/entity/message/ContentMessage';
 import {ContextMenuEntry, showContextMenu} from 'src/script/ui/ContextMenu';
@@ -41,6 +42,7 @@ import {
   getIconCSS,
   messageWithHeaderTop,
 } from './MessageActions.styles';
+import {reactionImgSize} from './MessageReactions/EmojiChar.styles';
 import {MessageReactions} from './MessageReactions/MessageReactions';
 import {ReplyButton} from './ReplyButton';
 
@@ -215,6 +217,7 @@ const MessageActionsMenu: FC<MessageActionsMenuProps> = ({
                 onReplyClick={handleMessageThread}
                 onKeyPress={handleKeyDown}
                 ariaLabel="Start thread"
+                icon={<Icon.MessageIcon className="svg-icon" css={reactionImgSize} />}
               />
             )}
           </>

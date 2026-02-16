@@ -78,7 +78,7 @@ export class ConversationPage {
     this.messageInput = page.getByTestId('input-message');
     this.watermark = page.getByTestId('no-conversation').locator('svg');
     this.sendMessageButton = page.getByTestId('do-send-message');
-    this.sendThreadMessageButton = page.getByTestId('do-send-thread-message');
+    this.sendThreadMessageButton = page.locator('#message-thread').getByTestId('do-send-message');
     this.searchButton = page.getByRole('button', {name: 'Search'});
     this.conversationTitle = page.locator('[data-uie-name="status-conversation-title-bar-label"]');
     this.openGroupInformationViaName = page.getByTestId('status-conversation-title-bar-label');

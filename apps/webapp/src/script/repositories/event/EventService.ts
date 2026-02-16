@@ -274,7 +274,7 @@ export class EventService {
         .table(StorageSchemata.OBJECT_STORE.EVENTS)
         .where('[conversation+thread_id+time]')
         .between([conversationId, threadId, fromIsoDate], [conversationId, threadId, toIsoDate], true, true)
-        .and(record => !!record.is_thread_reply)
+        .and(record => record.id !== threadId || !!record.is_thread_reply)
         .sortBy('time')
         .then(events => events.slice(0, limit));
     }
@@ -285,7 +285,7 @@ export class EventService {
         return (
           record.conversation === conversationId &&
           record.thread_id === threadId &&
-          isThreadReply(record) &&
+          record.id !== threadId &&
           record.time >= fromIsoDate &&
           record.time <= toIsoDate
         );
@@ -300,7 +300,10 @@ export class EventService {
       throw new ConversationError(BASE_ERROR_TYPE.MISSING_PARAMETER, BaseError.MESSAGE.MISSING_PARAMETER);
     }
 
-    const isVisibleReply = (event: EventRecord) => isThreadReply(event) && event.ephemeral_expires !== true;
+    const isVisibleReply = (event: EventRecord) =>
+      (event.thread_id === threadId || event.thread_root_message_id === threadId) &&
+      event.id !== threadId &&
+      event.ephemeral_expires !== true;
 
     if (this.storageService.db) {
       return this.storageService.db

@@ -17,7 +17,7 @@
  *
  */
 
-import {FC} from 'react';
+import {FC, ReactNode} from 'react';
 
 import * as Icon from 'Components/Icon';
 import {t} from 'Util/LocalizerUtil';
@@ -32,6 +32,7 @@ interface ReplyButtonProps {
   onReplyClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
   onKeyPress: (event: React.KeyboardEvent<HTMLButtonElement>) => void;
   ariaLabel?: string;
+  icon?: ReactNode;
 }
 
 const ReplyButton: FC<ReplyButtonProps> = ({
@@ -41,6 +42,7 @@ const ReplyButton: FC<ReplyButtonProps> = ({
   onReplyClick,
   onKeyPress,
   ariaLabel = t('conversationContextMenuReply'),
+  icon,
 }) => {
   return (
     <button
@@ -56,7 +58,7 @@ const ReplyButton: FC<ReplyButtonProps> = ({
       onClick={onReplyClick}
       onKeyDown={onKeyPress}
     >
-      <Icon.ReplyIcon className="svg-icon" css={reactionImgSize} />
+      {icon ?? <Icon.ReplyIcon className="svg-icon" css={reactionImgSize} />}
     </button>
   );
 };
