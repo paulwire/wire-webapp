@@ -293,7 +293,7 @@ export const MessagesList: FC<MessagesListParams> = ({
               const isLastLoadedMessage =
                 groupIndex === groupedMessages.length - 1 && messageIndex === messages.length - 1;
 
-              const isLastMessage = isLastLoadedMessage && conversation.hasLastReceivedMessageLoaded();
+              const isLastMessage = isLastLoadedMessage;
 
               const visibleCallback = () => {
                 getVisibleCallback(conversation, message)?.();
