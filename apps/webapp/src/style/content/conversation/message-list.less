@@ -145,7 +145,11 @@
 .message.message-thread-root-highlight {
   .content-message-wrapper {
     border-radius: 8px;
-    background-color: var(--accent-color-fade-16);
+    background-color: var(--accent-color-50);
+
+    body.theme-dark & {
+      background-color: var(--accent-color-800);
+    }
   }
 }
 

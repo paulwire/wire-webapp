@@ -331,7 +331,6 @@ export const MessagesList: FC<MessagesListParams> = ({
                   key={key}
                   className={cx({
                     'message-thread-root-highlight': isThreadRootHighlighted,
-                    [message.accent_color()]: isThreadRootHighlighted,
                   })}
                   onVisible={visibleCallback}
                   onVisibilityLost={lastMessageInvisibleCallback}

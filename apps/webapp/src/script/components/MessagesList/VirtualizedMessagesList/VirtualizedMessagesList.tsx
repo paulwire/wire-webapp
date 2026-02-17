@@ -322,7 +322,6 @@ export const VirtualizedMessagesList = ({
                 <Message
                   className={cx({
                     'message-thread-root-highlight': activeThreadRootMessageId === item.message.id,
-                    [item.message.accent_color()]: activeThreadRootMessageId === item.message.id,
                   })}
                   measureElement={virtualizer.measureElement}
                   index={virtualItem.index}
