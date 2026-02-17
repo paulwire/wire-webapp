@@ -29,6 +29,7 @@ import {Giphy} from 'Components/Giphy';
 import {InputBar} from 'Components/InputBar';
 import {Message as MessageComponent} from 'Components/MessagesList/Message';
 import {MarkerComponent} from 'Components/MessagesList/Message/Marker';
+import {THREAD_PANEL_INTERACTION_EVENT} from 'Components/MessagesList/utils/threadRootHighlightEvents';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
 import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/messagesGroup';
 import {CellsRepository} from 'Repositories/cells/CellsRepository';
@@ -287,13 +288,21 @@ export const MessageThread: FC<MessageThreadProps> = ({
     },
     [conversationRepository],
   );
+  const markThreadPanelInteraction = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(THREAD_PANEL_INTERACTION_EVENT));
+  }, []);
 
   if (!rootContentMessage) {
     return null;
   }
 
   return (
-    <div id="message-thread" className="panel__page panel__message-thread">
+    <div
+      id="message-thread"
+      className="panel__page panel__message-thread"
+      onFocusCapture={markThreadPanelInteraction}
+      onMouseDownCapture={markThreadPanelInteraction}
+    >
       <PanelHeader
         onClose={onClose}
         showBackArrow={false}
@@ -354,6 +363,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
           threadId={threadId}
           disableRightPanelOffset
           showPingButton={false}
+          focusScope="thread"
           conversation={activeConversation}
           conversationRepository={conversationRepository}
           cellsRepository={cellsRepository}

@@ -65,6 +65,7 @@ import {usePing} from './usePing/usePing';
 import {useTypingIndicator} from './useTypingIndicator/useTypingIndicator';
 
 import {Config} from '../../Config';
+import {ComposerFocusScope} from '../MessagesList/utils/threadRootHighlightEvents';
 
 const CONFIG = {
   ...Config.getConfig(),
@@ -76,6 +77,7 @@ interface InputBarProps {
   threadId?: string | null;
   disableRightPanelOffset?: boolean;
   showPingButton?: boolean;
+  focusScope?: ComposerFocusScope;
   readonly conversation: Conversation;
   readonly conversationRepository: ConversationRepository;
   readonly cellsRepository: CellsRepository;
@@ -101,6 +103,7 @@ export const InputBar = ({
   threadId,
   disableRightPanelOffset = false,
   showPingButton = true,
+  focusScope = 'main',
   conversation,
   conversationRepository,
   cellsRepository,
@@ -275,7 +278,7 @@ export const InputBar = ({
 
   return (
     <div ref={wrapperRef}>
-      <InputBarContainer disableRightPanelOffset={disableRightPanelOffset}>
+      <InputBarContainer disableRightPanelOffset={disableRightPanelOffset} focusScope={focusScope}>
         {isTypingIndicatorEnabled && <TypingIndicator conversationId={conversation.id} />}
 
         {classifiedDomains && !isConnectionRequest && (

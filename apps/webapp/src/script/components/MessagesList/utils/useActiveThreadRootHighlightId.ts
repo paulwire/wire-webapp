@@ -23,6 +23,12 @@ import {Message as MessageEntity} from 'Repositories/entity/message/Message';
 import {PanelState} from 'src/script/page/RightSidebar';
 import {useAppMainState} from 'src/script/page/state';
 
+import {
+  COMPOSER_FOCUS_EVENT,
+  ComposerFocusScope,
+  THREAD_PANEL_INTERACTION_EVENT,
+} from './threadRootHighlightEvents';
+
 export const useActiveThreadRootHighlightId = () => {
   const activeThreadRootMessageId = useAppMainState(state => {
     const {history, entity} = state.rightSidebar;
@@ -45,38 +51,28 @@ export const useActiveThreadRootHighlightId = () => {
 
     setMainConversationHighlightActive(true);
 
-    const handleFocusIn = (event: FocusEvent) => {
-      const target = event.target as Element | null;
-      if (!target) {
-        return;
-      }
-
-      if (target.closest('#message-thread')) {
+    const handleComposerFocus = (event: Event) => {
+      const customEvent = event as CustomEvent<{scope?: ComposerFocusScope}>;
+      if (customEvent.detail?.scope === 'thread') {
         setMainConversationHighlightActive(true);
         return;
       }
 
-      if (target.closest('#conversation-input-bar')) {
+      if (customEvent.detail?.scope === 'main') {
         setMainConversationHighlightActive(false);
       }
     };
 
-    const handleMouseDown = (event: MouseEvent) => {
-      const target = event.target as Element | null;
-      if (target?.closest('#message-thread')) {
-        setMainConversationHighlightActive(true);
-      }
-    };
+    const handleThreadPanelInteraction = () => setMainConversationHighlightActive(true);
 
-    document.addEventListener('focusin', handleFocusIn);
-    document.addEventListener('mousedown', handleMouseDown);
+    window.addEventListener(COMPOSER_FOCUS_EVENT, handleComposerFocus);
+    window.addEventListener(THREAD_PANEL_INTERACTION_EVENT, handleThreadPanelInteraction);
 
     return () => {
-      document.removeEventListener('focusin', handleFocusIn);
-      document.removeEventListener('mousedown', handleMouseDown);
+      window.removeEventListener(COMPOSER_FOCUS_EVENT, handleComposerFocus);
+      window.removeEventListener(THREAD_PANEL_INTERACTION_EVENT, handleThreadPanelInteraction);
     };
   }, [activeThreadRootMessageId]);
 
   return isMainConversationHighlightActive ? activeThreadRootMessageId : null;
 };
-
