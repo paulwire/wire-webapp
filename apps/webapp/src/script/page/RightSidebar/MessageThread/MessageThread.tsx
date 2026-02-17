@@ -21,6 +21,7 @@ import {FC, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 
 import {amplify} from 'amplify';
+import cx from 'classnames';
 
 import {WebAppEvents} from '@wireapp/webapp-events';
 
@@ -299,6 +300,10 @@ export const MessageThread: FC<MessageThreadProps> = ({
             return group.messages.map(message => (
               <MessageComponent
                 key={`${message.id}-${message.timestamp()}`}
+                className={cx({
+                  'message-thread-root-highlight': message.id === rootContentMessage.id,
+                  [message.accent_color()]: message.id === rootContentMessage.id,
+                })}
                 message={message}
                 hideHeader={message.timestamp() !== group.firstMessageTimestamp}
                 messageActions={actionsViewModel}

@@ -54,6 +54,7 @@ interface MessageActions {
 }
 
 interface MessageParams extends MessageActions {
+  className?: string;
   conversation: Conversation;
   hasReadReceiptsTurnedOn: boolean;
   isLastDeliveredMessage: boolean;
@@ -83,6 +84,7 @@ interface MessageParams extends MessageActions {
 
 export const Message = (props: MessageParams) => {
   const {
+    className,
     message,
     isHighlighted,
     hideHeader,
@@ -148,7 +150,7 @@ export const Message = (props: MessageParams) => {
         'message-marked': isHighlighted,
         'content-message': message.isContent(),
         'system-message': !message.isContent(),
-      })}
+      }, className)}
       ref={element => {
         messageElementRef.current = element;
         measureElement?.(element);

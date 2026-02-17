@@ -56,6 +56,7 @@ export interface MessageActions {
 }
 
 export interface MessageParams extends MessageActions {
+  className?: string;
   conversation: Conversation;
   hasReadReceiptsTurnedOn: boolean;
   isLastDeliveredMessage: boolean;
@@ -86,6 +87,7 @@ export interface MessageParams extends MessageActions {
 
 export const Message = (props: MessageParams & {scrollTo?: ScrollToElement}) => {
   const {
+    className,
     message,
     isHighlighted,
     hideHeader,
@@ -165,7 +167,7 @@ export const Message = (props: MessageParams & {scrollTo?: ScrollToElement}) => 
         'message-marked': isHighlighted,
         'content-message': message.isContent(),
         'system-message': !message.isContent(),
-      })}
+      }, className)}
       ref={messageElementRef}
       data-uie-uid={message.id}
       data-uie-value={message.super_type}
