@@ -18,6 +18,8 @@
  */
 
 .app {
+  --thread-panel-width: min(380px, 100vw);
+
   .font-antialiasing;
   .full-screen;
 
@@ -97,8 +99,8 @@
     transform: scale(1, 1);
 
     &--message-thread {
-      --right-width: min(380px, 100vw);
-      --panel-width: min(380px, 100vw);
+      --right-width: var(--thread-panel-width);
+      --panel-width: var(--thread-panel-width);
     }
 
     .center-column__overlay {
@@ -124,8 +126,8 @@
   }
 
   &--message-thread-panel {
-    --right-width: min(380px, 100vw);
-    --panel-width: min(380px, 100vw);
+    --right-width: var(--thread-panel-width);
+    --panel-width: var(--thread-panel-width);
   }
 
   &--hide-main-content-on-mobile {
