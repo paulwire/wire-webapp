@@ -30,13 +30,11 @@ import {verticallyCenterMessage} from 'Components/MessagesList/utils/helpers';
 import {filterMessages} from 'Components/MessagesList/utils/messagesFilter';
 import {useLoadConversation} from 'Components/MessagesList/utils/useLoadConversation';
 import {useScrollToLastUnreadMessage} from 'Components/MessagesList/utils/useScrollToLastUnreadMessage';
+import {useActiveThreadRootHighlightId} from 'Components/MessagesList/utils/useActiveThreadRootHighlightId';
 import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/virtualizedMessagesGroup';
 import {useLoadMessages} from 'Components/MessagesList/VirtualizedMessagesList/useLoadMessages';
 import {useScrollMessages} from 'Components/MessagesList/VirtualizedMessagesList/useScrollMessages';
 import {useRoveFocus} from 'Hooks/useRoveFocus';
-import {Message as MessageEntity} from 'Repositories/entity/message/Message';
-import {PanelState} from 'src/script/page/RightSidebar';
-import {useAppMainState} from 'src/script/page/state';
 import {useKoSubscribableChildren} from 'Util/ComponentUtil';
 
 import {VirtualizedJumpToLastMessageButton} from '../VirtualizedJumpToLastMessageButton';
@@ -104,16 +102,7 @@ export const VirtualizedMessagesList = ({
   const groupedMessages = useMemo(() => {
     return groupMessagesBySenderAndTime(filteredMessages, conversationLastReadTimestamp.current);
   }, [conversationLastReadTimestamp, filteredMessages]);
-  const activeThreadRootMessageId = useAppMainState(state => {
-    const {history, entity} = state.rightSidebar;
-    const currentPanel = history[history.length - 1];
-
-    if (currentPanel !== PanelState.MESSAGE_THREAD || !(entity instanceof MessageEntity)) {
-      return null;
-    }
-
-    return entity.id;
-  });
+  const activeThreadRootMessageId = useActiveThreadRootHighlightId();
 
   const [highlightedMessage, setHighlightedMessage] = useState<string | undefined>(conversation.initialMessage()?.id);
 

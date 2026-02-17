@@ -37,8 +37,6 @@ import {Message as MessageEntity} from 'Repositories/entity/message/Message';
 import {User} from 'Repositories/entity/User';
 import {ServiceEntity} from 'Repositories/integration/ServiceEntity';
 import {useRoveFocus} from 'src/script/hooks/useRoveFocus';
-import {PanelState} from 'src/script/page/RightSidebar';
-import {useAppMainState} from 'src/script/page/state';
 import {useKoSubscribableChildren} from 'Util/ComponentUtil';
 import {isLastReceivedMessage} from 'Util/conversationMessages';
 import {onHitTopOrBottom} from 'Util/DOM/onHitTopOrBottom';
@@ -48,6 +46,7 @@ import {Message, MessageActions} from './Message';
 import {MarkerComponent} from './Message/Marker';
 import {ScrollToElement} from './Message/types';
 import {UploadAssets} from './UploadAssets';
+import {useActiveThreadRootHighlightId} from './utils/useActiveThreadRootHighlightId';
 import {groupMessagesBySenderAndTime, isMarker} from './utils/messagesGroup';
 import {updateScroll, FocusedElement} from './utils/scrollUpdater';
 
@@ -132,16 +131,7 @@ export const MessagesList: FC<MessagesListParams> = ({
   const filteredMessagesLength = filteredMessages.length;
 
   const groupedMessages = groupMessagesBySenderAndTime(filteredMessages, conversationLastReadTimestamp.current);
-  const activeThreadRootMessageId = useAppMainState(state => {
-    const {history, entity} = state.rightSidebar;
-    const currentPanel = history[history.length - 1];
-
-    if (currentPanel !== PanelState.MESSAGE_THREAD || !(entity instanceof MessageEntity)) {
-      return null;
-    }
-
-    return entity.id;
-  });
+  const activeThreadRootMessageId = useActiveThreadRootHighlightId();
 
   const [messagesContainer, setMessagesContainer] = useState<HTMLDivElement | null>(null);
 
