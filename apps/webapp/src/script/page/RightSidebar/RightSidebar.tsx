@@ -21,6 +21,7 @@ import {cloneElement, FC, ReactNode, useCallback, useEffect, useRef, useState} f
 
 import {CONVERSATION_CELLS_STATE} from '@wireapp/api-client/lib/conversation';
 import {amplify} from 'amplify';
+import cx from 'classnames';
 import {CSSTransition, TransitionGroup} from 'react-transition-group';
 import {container} from 'tsyringe';
 
@@ -201,7 +202,7 @@ const RightSidebar: FC<RightSidebarProps> = ({
     <TransitionGroup
       id="right-column"
       component="aside"
-      className="right-column"
+      className={cx('right-column', {'right-column--message-thread': currentState === PanelState.MESSAGE_THREAD})}
       childFactory={child =>
         cloneElement(child, {
           classNames: animatePanelToLeft ? 'right-to-left' : 'left-to-right',
