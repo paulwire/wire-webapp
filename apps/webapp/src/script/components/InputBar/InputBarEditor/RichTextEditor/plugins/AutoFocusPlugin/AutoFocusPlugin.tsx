@@ -33,7 +33,12 @@ import {
 } from 'Util/KeyboardUtil';
 
 const hasInputAlreadyFocused = () => {
-  return document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+  const activeElement = document.activeElement as HTMLElement | null;
+  if (!activeElement) {
+    return false;
+  }
+
+  return ['INPUT', 'TEXTAREA'].includes(activeElement.tagName) || activeElement.isContentEditable;
 };
 
 const useTextAreaFocus = (callback: () => void) => {
