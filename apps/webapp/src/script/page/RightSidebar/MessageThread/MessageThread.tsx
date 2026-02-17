@@ -254,6 +254,26 @@ export const MessageThread: FC<MessageThreadProps> = ({
     [uploadFiles, uploadImages],
   );
 
+  const getThreadVisibleCallback = useCallback(
+    (message: MessageEntity) => {
+      if (!message.isEphemeral()) {
+        return undefined;
+      }
+
+      return () => {
+        const trigger = () => conversationRepository.checkMessageTimer(message as ContentMessage);
+
+        if (document.hasFocus()) {
+          trigger();
+          return;
+        }
+
+        window.addEventListener('focus', trigger, {once: true});
+      };
+    },
+    [conversationRepository],
+  );
+
   if (!rootContentMessage) {
     return null;
   }
@@ -298,6 +318,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
                 onClickThread={() => undefined}
                 onClickResetSession={() => undefined}
                 onClickTimestamp={() => undefined}
+                onVisible={getThreadVisibleCallback(message)}
                 selfId={selfUser.qualifiedId}
                 shouldShowInvitePeople={false}
                 isFocused={focusedId === message.id}
