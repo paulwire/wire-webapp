@@ -31,6 +31,7 @@ import {Message as MessageComponent} from 'Components/MessagesList/Message';
 import {MarkerComponent} from 'Components/MessagesList/Message/Marker';
 import {THREAD_PANEL_INTERACTION_EVENT} from 'Components/MessagesList/utils/threadRootHighlightEvents';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
+import {useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/messagesGroup';
 import {CellsRepository} from 'Repositories/cells/CellsRepository';
 import {ConversationRepository} from 'Repositories/conversation/ConversationRepository';
@@ -180,6 +181,20 @@ export const MessageThread: FC<MessageThreadProps> = ({
   useEffect(() => {
     void loadThreadReplies();
   }, [loadThreadReplies]);
+
+  useEffect(() => {
+    if (threadReplies.length === 0) {
+      return;
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      useThreadUnreadRepliesStore.getState().markThreadAsRead(activeConversation.id, threadId);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [activeConversation.id, groupedThreadMessages.length, threadId, threadReplies.length]);
 
   useEffect(() => {
     isMountedRef.current = true;
