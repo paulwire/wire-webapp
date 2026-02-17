@@ -37,6 +37,8 @@ import {Message as MessageEntity} from 'Repositories/entity/message/Message';
 import {User} from 'Repositories/entity/User';
 import {ServiceEntity} from 'Repositories/integration/ServiceEntity';
 import {useRoveFocus} from 'src/script/hooks/useRoveFocus';
+import {PanelState} from 'src/script/page/RightSidebar';
+import {useAppMainState} from 'src/script/page/state';
 import {useKoSubscribableChildren} from 'Util/ComponentUtil';
 import {isLastReceivedMessage} from 'Util/conversationMessages';
 import {onHitTopOrBottom} from 'Util/DOM/onHitTopOrBottom';
@@ -130,6 +132,16 @@ export const MessagesList: FC<MessagesListParams> = ({
   const filteredMessagesLength = filteredMessages.length;
 
   const groupedMessages = groupMessagesBySenderAndTime(filteredMessages, conversationLastReadTimestamp.current);
+  const activeThreadRootMessageId = useAppMainState(state => {
+    const {history, entity} = state.rightSidebar;
+    const currentPanel = history[history.length - 1];
+
+    if (currentPanel !== PanelState.MESSAGE_THREAD || !(entity instanceof MessageEntity)) {
+      return null;
+    }
+
+    return entity.id;
+  });
 
   const [messagesContainer, setMessagesContainer] = useState<HTMLDivElement | null>(null);
 
@@ -312,10 +324,15 @@ export const MessagesList: FC<MessagesListParams> = ({
 
               const isHighlighted = !!highlightedMessage && highlightedMessage === message.id;
               const isFocused = !!focusedId && focusedId === message.id;
+              const isThreadRootHighlighted = activeThreadRootMessageId === message.id;
 
               return (
                 <Message
                   key={key}
+                  className={cx({
+                    'message-thread-root-highlight': isThreadRootHighlighted,
+                    [message.accent_color()]: isThreadRootHighlighted,
+                  })}
                   onVisible={visibleCallback}
                   onVisibilityLost={lastMessageInvisibleCallback}
                   message={message}

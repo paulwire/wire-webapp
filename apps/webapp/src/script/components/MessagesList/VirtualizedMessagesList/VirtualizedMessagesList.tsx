@@ -34,6 +34,9 @@ import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/ut
 import {useLoadMessages} from 'Components/MessagesList/VirtualizedMessagesList/useLoadMessages';
 import {useScrollMessages} from 'Components/MessagesList/VirtualizedMessagesList/useScrollMessages';
 import {useRoveFocus} from 'Hooks/useRoveFocus';
+import {Message as MessageEntity} from 'Repositories/entity/message/Message';
+import {PanelState} from 'src/script/page/RightSidebar';
+import {useAppMainState} from 'src/script/page/state';
 import {useKoSubscribableChildren} from 'Util/ComponentUtil';
 
 import {VirtualizedJumpToLastMessageButton} from '../VirtualizedJumpToLastMessageButton';
@@ -101,6 +104,16 @@ export const VirtualizedMessagesList = ({
   const groupedMessages = useMemo(() => {
     return groupMessagesBySenderAndTime(filteredMessages, conversationLastReadTimestamp.current);
   }, [conversationLastReadTimestamp, filteredMessages]);
+  const activeThreadRootMessageId = useAppMainState(state => {
+    const {history, entity} = state.rightSidebar;
+    const currentPanel = history[history.length - 1];
+
+    if (currentPanel !== PanelState.MESSAGE_THREAD || !(entity instanceof MessageEntity)) {
+      return null;
+    }
+
+    return entity.id;
+  });
 
   const [highlightedMessage, setHighlightedMessage] = useState<string | undefined>(conversation.initialMessage()?.id);
 
@@ -307,6 +320,10 @@ export const VirtualizedMessagesList = ({
                 <MarkerComponent marker={item} measureElement={virtualizer.measureElement} index={virtualItem.index} />
               ) : (
                 <Message
+                  className={cx({
+                    'message-thread-root-highlight': activeThreadRootMessageId === item.message.id,
+                    [item.message.accent_color()]: activeThreadRootMessageId === item.message.id,
+                  })}
                   measureElement={virtualizer.measureElement}
                   index={virtualItem.index}
                   message={item.message}
