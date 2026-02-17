@@ -369,16 +369,15 @@ export const TitleBar = ({
         ) : (
           <>
             {isThreadPanelOpen && (
-              <button
-                type="button"
-                title="Thread"
-                aria-label="Thread"
+              <span
+                title="Thread active"
+                aria-label="Thread active"
+                role="status"
                 className={cx('conversation-title-bar-icon', {active: isThreadPanelOpen})}
                 data-uie-name="status-open-thread"
-                tabIndex={TabIndex.UNFOCUSABLE}
               >
                 <Icon.MessageIcon />
-              </button>
+              </span>
             )}
             <button
               type="button"

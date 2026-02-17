@@ -173,10 +173,11 @@ describe('TitleBar', () => {
 
     const {getByLabelText} = render(withTheme(<TitleBar {...props} />));
 
-    const threadButton = getByLabelText('Thread');
+    const threadStatus = getByLabelText('Thread active');
     const infoButton = getByLabelText('tooltipConversationInfo');
 
-    expect(threadButton.className).toContain('active');
+    expect(threadStatus.tagName).toBe('SPAN');
+    expect(threadStatus.className).toContain('active');
     expect(infoButton.className).not.toContain('active');
   });
 
