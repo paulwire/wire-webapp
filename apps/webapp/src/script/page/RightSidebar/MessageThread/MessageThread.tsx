@@ -123,6 +123,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
   const eventMapperRef = useRef(new EventMapper());
   const latestLoadRequestIdRef = useRef(0);
   const isMountedRef = useRef(true);
+  const pendingWindowFocusHandlersRef = useRef(new Set<() => void>());
   const [isMsgElementsFocusable, setMsgElementsFocusable] = useState(false);
 
   const loadThreadReplies = useCallback(async () => {
@@ -185,6 +186,11 @@ export const MessageThread: FC<MessageThreadProps> = ({
     return () => {
       isMountedRef.current = false;
       latestLoadRequestIdRef.current += 1;
+
+      pendingWindowFocusHandlersRef.current.forEach(handler => {
+        window.removeEventListener('focus', handler);
+      });
+      pendingWindowFocusHandlersRef.current.clear();
     };
   }, []);
 
@@ -262,13 +268,20 @@ export const MessageThread: FC<MessageThreadProps> = ({
       }
 
       return () => {
-        const trigger = () => conversationRepository.checkMessageTimer(message as ContentMessage);
+        const trigger = () => {
+          pendingWindowFocusHandlersRef.current.delete(trigger);
+
+          if (isMountedRef.current) {
+            conversationRepository.checkMessageTimer(message as ContentMessage);
+          }
+        };
 
         if (document.hasFocus()) {
           trigger();
           return;
         }
 
+        pendingWindowFocusHandlersRef.current.add(trigger);
         window.addEventListener('focus', trigger, {once: true});
       };
     },
