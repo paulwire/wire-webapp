@@ -18,6 +18,7 @@
  */
 
 import {FC, useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
 
 import {amplify} from 'amplify';
 
@@ -360,9 +361,9 @@ export const MessageThread: FC<MessageThreadProps> = ({
           onCellAssetUpload={() => undefined}
         />
       </div>
-      {isGiphyModalOpen && giphyQuery && (
-        <Giphy giphyRepository={giphyRepository} inputValue={giphyQuery} onClose={closeGiphy} />
-      )}
+      {isGiphyModalOpen &&
+        giphyQuery &&
+        createPortal(<Giphy giphyRepository={giphyRepository} inputValue={giphyQuery} onClose={closeGiphy} />, document.body)}
     </div>
   );
 };
