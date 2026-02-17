@@ -23,10 +23,6 @@ import cx from 'classnames';
 
 import * as Icon from 'Components/Icon';
 import {DraftState, generateConversationInputStorageKey} from 'Components/InputBar/common/draftState/draftState';
-import {
-  hasConversationUnreadThreadReplies,
-  useThreadUnreadRepliesStore,
-} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {useLocalStorage} from 'Hooks/useLocalStorage';
 import {generateCellState} from 'Repositories/conversation/ConversationCellState';
 import {Conversation, UnreadState} from 'Repositories/entity/Conversation';
@@ -43,7 +39,6 @@ interface Props {
 
 export const CellDescription = ({conversation, mutedState, isActive, isRequest, unreadState}: Props) => {
   const cellState = useMemo(() => generateCellState(conversation), [unreadState, mutedState, isRequest]);
-  const hasUnreadThreadReply = useThreadUnreadRepliesStore(state => hasConversationUnreadThreadReplies(conversation.id, state));
 
   const storageKey = generateConversationInputStorageKey(conversation);
   // Hardcoded __amplify__ because of StorageUtil saving as __amplify__<storage_key>
@@ -52,7 +47,7 @@ export const CellDescription = ({conversation, mutedState, isActive, isRequest, 
   const draftMessage = store?.data?.plainMessage;
   const currentConversationDraftMessage = isActive ? '' : draftMessage;
 
-  if (!cellState.description && !currentConversationDraftMessage && !hasUnreadThreadReply) {
+  if (!cellState.description && !currentConversationDraftMessage) {
     return null;
   }
 
@@ -63,8 +58,8 @@ export const CellDescription = ({conversation, mutedState, isActive, isRequest, 
       })}
       data-uie-name="secondary-line"
     >
-      {!hasUnreadThreadReply && !cellState.description && currentConversationDraftMessage && <Icon.DraftMessageIcon css={iconStyle} />}
-      {hasUnreadThreadReply ? t('conversationsSecondaryLineUnreadThreadReply') : cellState.description || currentConversationDraftMessage}
+      {!cellState.description && currentConversationDraftMessage && <Icon.DraftMessageIcon css={iconStyle} />}
+      {cellState.description || currentConversationDraftMessage}
     </span>
   );
 };

@@ -52,9 +52,3 @@ export const threadRepliesButton: CSSObject = {
   padding: 0,
   textAlign: 'left',
 };
-
-export const threadRepliesButtonUnread: CSSObject = {
-  backgroundColor: 'var(--accent-color-50)',
-  borderRadius: '8px',
-  padding: '2px 8px',
-};

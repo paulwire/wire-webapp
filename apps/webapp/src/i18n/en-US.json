@@ -902,7 +902,6 @@
   "conversationsSecondaryLineSummaryPings": "{number} pings",
   "conversationsSecondaryLineSummaryReplies": "{number} replies",
   "conversationsSecondaryLineSummaryReply": "{number} reply",
-  "conversationsSecondaryLineUnreadThreadReply": "there is a reply in a thread",
   "conversationsSecondaryLineYouLeft": "You left",
   "conversationsSecondaryLineYouWereRemoved": "You were removed",
   "conversationsWelcome": "Welcome to {brandName} 👋",

@@ -29,7 +29,6 @@ import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {ReadIndicator} from 'Components/MessagesList/Message/ReadIndicator';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
-import {getThreadUnreadReplies, useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {useClickOutside} from 'Hooks/useClickOutside';
 import {Conversation} from 'Repositories/entity/Conversation';
 import {CompositeMessage} from 'Repositories/entity/message/CompositeMessage';
@@ -47,7 +46,6 @@ import {
   messageBodyWrapper,
   messageEphemeralTimer,
   threadRepliesButton,
-  threadRepliesButtonUnread,
   threadRepliesContainer,
 } from './ContentMessage.styles';
 import {MessageActionsMenu} from './MessageActions/MessageActions';
@@ -159,9 +157,6 @@ export const ContentMessageComponent = ({
   }, [msgFocusState, isFocused]);
 
   const canShowThreadReplies = showThreadSummary && message.isReplyable() && !message.threadId;
-  const threadUnreadCount = useThreadUnreadRepliesStore(state =>
-    getThreadUnreadReplies(conversation.id, message.id, state),
-  );
 
   useEffect(() => {
     if (!canShowThreadReplies) {
@@ -361,13 +356,12 @@ export const ContentMessageComponent = ({
           <button
             type="button"
             data-uie-name="do-open-message-thread"
-            css={[threadRepliesButton, threadUnreadCount > 0 && threadRepliesButtonUnread]}
+            css={threadRepliesButton}
             onClick={() => onClickThread(message)}
           >
-            {(threadRepliesCount === 1
+            {threadRepliesCount === 1
               ? t('conversationsSecondaryLineSummaryReply', {number: 1})
-              : t('conversationsSecondaryLineSummaryReplies', {number: threadRepliesCount})) +
-              (threadUnreadCount > 0 ? `, ${threadUnreadCount} unread` : '')}
+              : t('conversationsSecondaryLineSummaryReplies', {number: threadRepliesCount})}
           </button>
         </div>
       )}
