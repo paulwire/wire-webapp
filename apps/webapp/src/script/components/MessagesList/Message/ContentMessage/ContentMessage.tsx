@@ -29,6 +29,7 @@ import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {ReadIndicator} from 'Components/MessagesList/Message/ReadIndicator';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
+import {getThreadUnreadRepliesCount, useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {useClickOutside} from 'Hooks/useClickOutside';
 import {Conversation} from 'Repositories/entity/Conversation';
 import {CompositeMessage} from 'Repositories/entity/message/CompositeMessage';
@@ -46,6 +47,7 @@ import {
   messageBodyWrapper,
   messageEphemeralTimer,
   threadRepliesButton,
+  threadRepliesButtonUnread,
   threadRepliesContainer,
 } from './ContentMessage.styles';
 import {MessageActionsMenu} from './MessageActions/MessageActions';
@@ -157,6 +159,9 @@ export const ContentMessageComponent = ({
   }, [msgFocusState, isFocused]);
 
   const canShowThreadReplies = showThreadSummary && message.isReplyable() && !message.threadId;
+  const threadUnreadRepliesCount = useThreadUnreadRepliesStore(state =>
+    getThreadUnreadRepliesCount(conversation.id, message.id, state),
+  );
 
   useEffect(() => {
     if (!canShowThreadReplies) {
@@ -356,12 +361,13 @@ export const ContentMessageComponent = ({
           <button
             type="button"
             data-uie-name="do-open-message-thread"
-            css={threadRepliesButton}
+            css={[threadRepliesButton, threadUnreadRepliesCount > 0 && threadRepliesButtonUnread]}
             onClick={() => onClickThread(message)}
           >
-            {threadRepliesCount === 1
+            {(threadRepliesCount === 1
               ? t('conversationsSecondaryLineSummaryReply', {number: 1})
-              : t('conversationsSecondaryLineSummaryReplies', {number: threadRepliesCount})}
+              : t('conversationsSecondaryLineSummaryReplies', {number: threadRepliesCount})) +
+              (threadUnreadRepliesCount > 0 ? `, ${threadUnreadRepliesCount} unread` : '')}
           </button>
         </div>
       )}
