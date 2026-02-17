@@ -31,6 +31,7 @@ import {Message as MessageComponent} from 'Components/MessagesList/Message';
 import {MarkerComponent} from 'Components/MessagesList/Message/Marker';
 import {THREAD_PANEL_INTERACTION_EVENT} from 'Components/MessagesList/utils/threadRootHighlightEvents';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
+import {useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/messagesGroup';
 import {CellsRepository} from 'Repositories/cells/CellsRepository';
 import {ConversationRepository} from 'Repositories/conversation/ConversationRepository';
@@ -154,6 +155,10 @@ export const MessageThread: FC<MessageThreadProps> = ({
       );
     }
   }, [activeConversation, eventRepository.eventService, messageRepository, threadId]);
+
+  useEffect(() => {
+    useThreadUnreadRepliesStore.getState().markThreadAsRead(activeConversation.id, threadId);
+  }, [activeConversation.id, threadId, threadReplies.length]);
 
   const threadMessages = useMemo(() => {
     if (!rootContentMessage) {

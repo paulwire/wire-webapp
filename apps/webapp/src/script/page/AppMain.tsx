@@ -41,6 +41,7 @@ import {useActiveWindow} from 'Hooks/useActiveWindow';
 import {useInitializeRootFontSize} from 'Hooks/useRootFontSize';
 import {CallingViewMode, CallState, DesktopScreenShareMenu} from 'Repositories/calling/CallState';
 import {ConversationState} from 'Repositories/conversation/ConversationState';
+import {Message as MessageEntity} from 'Repositories/entity/message/Message';
 import {User} from 'Repositories/entity/User';
 import {TeamState} from 'Repositories/team/TeamState';
 import {showInitialModal} from 'Repositories/user/AvailabilityModal';
@@ -68,6 +69,7 @@ import {generateConversationUrl} from '../router/routeGenerator';
 import {configureRoutes, navigate} from '../router/Router';
 import {MainViewModel} from '../view_model/MainViewModel';
 import {WarningsContainer} from '../view_model/WarningsContainer/WarningsContainer';
+import {useThreadUnreadRepliesStore} from '../components/MessagesList/threading/threadUnreadRepliesStore';
 
 export type RightSidebarParams = {
   entity: PanelEntity | null;
@@ -274,6 +276,46 @@ export const AppMain = ({
   }, [locked]);
 
   useE2EIFeatureConfigUpdate(repositories.team);
+
+  useEffect(() => {
+    const normalizeThreadId = (threadId?: string | null) =>
+      typeof threadId === 'string' && threadId.length > 0 ? threadId : null;
+
+    const handleBackendEvent = (event?: {
+      conversation?: string;
+      from?: string;
+      thread_id?: string | null;
+      thread_root_message_id?: string | null;
+      data?: {thread_id?: string | null; thread_root_message_id?: string | null};
+    }) => {
+      const threadId = normalizeThreadId(
+        event?.thread_id ?? event?.thread_root_message_id ?? event?.data?.thread_id ?? event?.data?.thread_root_message_id,
+      );
+      const conversationId = event?.conversation;
+
+      if (!conversationId || !threadId || event?.from === selfUser.id) {
+        return;
+      }
+
+      const openThreadId =
+        currentState === PanelState.MESSAGE_THREAD && currentEntity instanceof MessageEntity
+          ? currentEntity.threadId ?? currentEntity.id
+          : null;
+
+      if (openThreadId === threadId) {
+        useThreadUnreadRepliesStore.getState().markThreadAsRead(conversationId, threadId);
+        return;
+      }
+
+      useThreadUnreadRepliesStore.getState().incrementUnreadForThread(conversationId, threadId);
+    };
+
+    amplify.subscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
+
+    return () => {
+      amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
+    };
+  }, [currentEntity, currentState, selfUser.id]);
 
   const showLeftSidebar = (isMobileView && isMobileLeftSidebarView) || (!isMobileView && !isLeftSidebarHidden);
   const showMainContent = currentTab === SidebarTabs.CELLS || !isMobileView || isMobileCentralColumnView;

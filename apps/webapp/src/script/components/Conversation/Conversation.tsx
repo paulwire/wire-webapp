@@ -68,6 +68,7 @@ import {isServiceEntity} from '../../guards/Service';
 import {MotionDuration} from '../../motion/MotionDuration';
 import {RightSidebarParams} from '../../page/AppMain';
 import {PanelState} from '../../page/RightSidebar';
+import {useThreadUnreadRepliesStore} from '../MessagesList/threading/threadUnreadRepliesStore';
 import {useMainViewModel} from '../../page/RootProvider';
 import {ElementType, MessageDetails} from '../MessagesList/Message/ContentMessage/asset/TextMessageRenderer';
 
@@ -291,6 +292,7 @@ export const Conversation = ({
   };
 
   const showMessageThread = (message: Message) => {
+    useThreadUnreadRepliesStore.getState().markThreadAsRead(activeConversation.id, message.threadId ?? message.id);
     openRightSidebar(PanelState.MESSAGE_THREAD, {entity: message}, true);
   };
 
