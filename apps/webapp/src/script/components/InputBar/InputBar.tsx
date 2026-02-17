@@ -75,6 +75,7 @@ const CONFIG = {
 interface InputBarProps {
   threadId?: string | null;
   disableRightPanelOffset?: boolean;
+  showPingButton?: boolean;
   readonly conversation: Conversation;
   readonly conversationRepository: ConversationRepository;
   readonly cellsRepository: CellsRepository;
@@ -99,6 +100,7 @@ interface InputBarProps {
 export const InputBar = ({
   threadId,
   disableRightPanelOffset = false,
+  showPingButton = true,
   conversation,
   conversationRepository,
   cellsRepository,
@@ -332,6 +334,7 @@ export const InputBar = ({
                   {!!files.length && <FilePreviews files={files} conversationQualifiedId={conversation.qualifiedId} />}
                   <InputBarControls
                     conversation={conversation}
+                    showPingButton={showPingButton}
                     isCellsFeatureEnabled={isCellsEnabled}
                     isFileSharingSendingEnabled={isFileSharingSendingEnabled}
                     pingDisabled={ping.isPingDisabled}

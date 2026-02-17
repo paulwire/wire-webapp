@@ -253,6 +253,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
     },
     [uploadFiles, uploadImages],
   );
+
   if (!rootContentMessage) {
     return null;
   }
@@ -316,6 +317,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
           key={`${activeConversation.id}-${threadId}`}
           threadId={threadId}
           disableRightPanelOffset
+          showPingButton={false}
           conversation={activeConversation}
           conversationRepository={conversationRepository}
           cellsRepository={cellsRepository}
