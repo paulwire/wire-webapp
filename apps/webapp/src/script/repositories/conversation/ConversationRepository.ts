@@ -3453,7 +3453,8 @@ export class ConversationRepository {
             CONVERSATION_EVENT.DELETE,
           ];
 
-          const shouldUpdateTimestampServer = !eventsToSkip.includes(type);
+          const isThreadReply = 'is_thread_reply' in eventJson && eventJson.is_thread_reply;
+          const shouldUpdateTimestampServer = !eventsToSkip.includes(type) && !isThreadReply;
 
           if (shouldUpdateTimestampServer) {
             conversationEntity.updateTimestampServer(eventJson.server_time || eventJson.time, isBackendTimestamp);
