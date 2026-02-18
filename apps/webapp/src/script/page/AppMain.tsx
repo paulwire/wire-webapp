@@ -19,12 +19,13 @@
 
 import {useEffect, useLayoutEffect} from 'react';
 
+import {CONVERSATION_EVENT} from '@wireapp/api-client/lib/event/';
 import {amplify} from 'amplify';
 import cx from 'classnames';
 import {ErrorBoundary} from 'react-error-boundary';
 import {container} from 'tsyringe';
-import {CONVERSATION_EVENT} from '@wireapp/api-client/lib/event/';
 
+import {Mention} from '@wireapp/protocol-messaging';
 import {QUERY, StyledApp, THEME_ID, useMatchMedia} from '@wireapp/react-ui-kit';
 import {WebAppEvents} from '@wireapp/webapp-events';
 
@@ -48,6 +49,7 @@ import {showInitialModal} from 'Repositories/user/AvailabilityModal';
 import {UserState} from 'Repositories/user/UserState';
 import {isUUID} from 'src/script/auth/util/stringUtil';
 import {Config} from 'src/script/Config';
+import {base64ToArray} from 'src/script/util/util';
 import {useKoSubscribableChildren} from 'Util/ComponentUtil';
 
 import {AppLock} from './AppLock';
@@ -63,17 +65,17 @@ import {RootProvider} from './RootProvider';
 import {useAppMainState, ViewType} from './state';
 import {ContentState, useAppState} from './useAppState';
 
-import {App} from '../main/app';
-import {initialiseMLSMigrationFlow} from '../mls/MLSMigration';
-import {generateConversationUrl} from '../router/routeGenerator';
-import {configureRoutes, navigate} from '../router/Router';
-import {MainViewModel} from '../view_model/MainViewModel';
-import {WarningsContainer} from '../view_model/WarningsContainer/WarningsContainer';
-import {ClientEvent} from '../repositories/event/Client';
 import {
   isThreadTrackedForSelf,
   useThreadUnreadRepliesStore,
 } from '../components/MessagesList/threading/threadUnreadRepliesStore';
+import {App} from '../main/app';
+import {initialiseMLSMigrationFlow} from '../mls/MLSMigration';
+import {ClientEvent} from '../repositories/event/Client';
+import {generateConversationUrl} from '../router/routeGenerator';
+import {configureRoutes, navigate} from '../router/Router';
+import {MainViewModel} from '../view_model/MainViewModel';
+import {WarningsContainer} from '../view_model/WarningsContainer/WarningsContainer';
 
 export type RightSidebarParams = {
   entity: PanelEntity | null;
@@ -283,7 +285,8 @@ export const AppMain = ({
 
   useEffect(() => {
     const pendingEligibilityChecks = new Set<string>();
-    const normalizeThreadId = (threadId?: string | null) => (typeof threadId === 'string' && threadId.length ? threadId : null);
+    const normalizeThreadId = (threadId?: string | null) =>
+      typeof threadId === 'string' && threadId.length ? threadId : null;
 
     const isThreadReplyMessageEvent = (eventType?: string) => {
       if (!eventType) {
@@ -303,14 +306,23 @@ export const AppMain = ({
       conversation?: string;
       from?: string;
       id?: string;
+      mentions?: string[];
       is_thread_reply?: boolean;
       thread_id?: string | null;
       thread_root_message_id?: string | null;
-      data?: {thread_id?: string | null; thread_root_message_id?: string | null};
+      data?: {
+        mentions?: string[];
+        text?: {mentions?: string[]};
+        thread_id?: string | null;
+        thread_root_message_id?: string | null;
+      };
     }) => {
       const conversationId = event?.conversation;
       const threadId = normalizeThreadId(
-        event?.thread_id ?? event?.thread_root_message_id ?? event?.data?.thread_id ?? event?.data?.thread_root_message_id,
+        event?.thread_id ??
+          event?.thread_root_message_id ??
+          event?.data?.thread_id ??
+          event?.data?.thread_root_message_id,
       );
 
       if (!conversationId || !threadId || !event?.is_thread_reply || !isThreadReplyMessageEvent(event.type)) {
@@ -319,14 +331,44 @@ export const AppMain = ({
 
       const threadStore = useThreadUnreadRepliesStore.getState();
       const threadKey = `${conversationId}:${threadId}`;
+      const selfDomain = selfUser.qualifiedId?.domain ?? '';
+      const mentionPayloads = [
+        ...(event?.mentions ?? []),
+        ...(event?.data?.mentions ?? []),
+        ...(event?.data?.text?.mentions ?? []),
+      ];
+      const isSelfMentionedInThreadReply = mentionPayloads.some(encodedMention => {
+        try {
+          const mention = Mention.decode(base64ToArray(encodedMention));
+          const mentionedId = mention.qualifiedUserId?.id || mention.userId;
+          const mentionedDomain = mention.qualifiedUserId?.domain ?? '';
+
+          if (!mentionedId || mentionedId !== selfUser.id) {
+            return false;
+          }
+
+          return !mentionedDomain || !selfDomain || mentionedDomain === selfDomain;
+        } catch {
+          return false;
+        }
+      });
 
       if (event.from === selfUser.id) {
         threadStore.markThreadRepliedBySelf(conversationId, threadId);
         return;
       }
 
+      if (isSelfMentionedInThreadReply) {
+        threadStore.markThreadUnreadMentionForSelf(conversationId, threadId);
+      }
+
       if (isThreadTrackedForSelf(conversationId, threadId, threadStore)) {
-        threadStore.incrementUnreadForThread(conversationId, threadId);
+        threadStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);
+        return;
+      }
+
+      if (isSelfMentionedInThreadReply) {
+        threadStore.incrementUnreadForThread(conversationId, threadId, true);
         return;
       }
 
@@ -341,17 +383,19 @@ export const AppMain = ({
         if (rootEvent?.from === selfUser.id) {
           const freshStore = useThreadUnreadRepliesStore.getState();
           freshStore.markThreadRootAuthoredBySelf(conversationId, threadId);
-          freshStore.incrementUnreadForThread(conversationId, threadId);
+          freshStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);
           return;
         }
 
         const threadEvents = await repositories.event.eventService.loadThreadEvents(conversationId, threadId);
-        const hasReplyFromSelf = threadEvents.some(threadEvent => threadEvent.id !== threadId && threadEvent.from === selfUser.id);
+        const hasReplyFromSelf = threadEvents.some(
+          threadEvent => threadEvent.id !== threadId && threadEvent.from === selfUser.id,
+        );
 
         if (hasReplyFromSelf) {
           const freshStore = useThreadUnreadRepliesStore.getState();
           freshStore.markThreadRepliedBySelf(conversationId, threadId);
-          freshStore.incrementUnreadForThread(conversationId, threadId);
+          freshStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);
         }
       } finally {
         pendingEligibilityChecks.delete(threadKey);
@@ -362,7 +406,7 @@ export const AppMain = ({
     return () => {
       amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
     };
-  }, [repositories.event.eventService, selfUser.id]);
+  }, [repositories.event.eventService, selfUser.id, selfUser.qualifiedId?.domain]);
 
   const showLeftSidebar = (isMobileView && isMobileLeftSidebarView) || (!isMobileView && !isLeftSidebarHidden);
   const showMainContent = currentTab === SidebarTabs.CELLS || !isMobileView || isMobileCentralColumnView;
