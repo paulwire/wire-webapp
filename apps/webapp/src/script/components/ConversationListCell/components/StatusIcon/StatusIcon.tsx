@@ -25,6 +25,7 @@ import {
   getConversationUnreadThreadRepliesCount,
   useThreadUnreadRepliesStore,
 } from 'Components/MessagesList/threading/threadUnreadRepliesStore';
+import {ThreadsIcon} from 'Components/ThreadIcons';
 import {generateCellState} from 'Repositories/conversation/ConversationCellState';
 import {ConversationStatusIcon} from 'Repositories/conversation/ConversationStatusIcon';
 import type {Conversation} from 'Repositories/entity/Conversation';
@@ -90,7 +91,7 @@ export const StatusIcon = ({conversation}: Props) => {
           title={t('accessibility.conversationStatusUnreadReply')}
           aria-label={t('accessibility.conversationStatusUnreadReply')}
         >
-          <Icon.MessageIcon className="svg-icon" />
+          <ThreadsIcon className="svg-icon" />
         </span>
       )}
 
