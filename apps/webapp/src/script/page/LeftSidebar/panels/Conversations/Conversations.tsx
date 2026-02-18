@@ -55,6 +55,7 @@ import {conversationsSpacerStyles} from './Conversations.styles';
 import {ConversationSidebar} from './ConversationSidebar/ConversationSidebar';
 import {ConversationsList} from './ConversationsList';
 import {EmptyConversationList} from './EmptyConversationList';
+import {ThreadsPanel} from './ThreadsPanel';
 import {getGroupParticipantsConversations} from './getGroupParticipantsConversation';
 import {getTabConversations, scrollToConversation} from './helpers';
 import {useDraftConversations} from './hooks/useDraftConversations';
@@ -151,6 +152,7 @@ export const Conversations = ({
 
   const isPreferences = currentTab === SidebarTabs.PREFERENCES;
   const isCells = currentTab === SidebarTabs.CELLS;
+  const isThreads = currentTab === SidebarTabs.THREADS;
 
   const showSearchInput = [
     SidebarTabs.RECENT,
@@ -435,7 +437,7 @@ export const Conversations = ({
               />
             )}
 
-            {hasEmptyConversationsList && (
+            {!isThreads && hasEmptyConversationsList && (
               <EmptyConversationList
                 currentTab={currentTab}
                 onChangeTab={changeTab}
@@ -443,7 +445,9 @@ export const Conversations = ({
               />
             )}
 
-            {showSearchInput && (
+            {isThreads && <ThreadsPanel />}
+
+            {!isThreads && showSearchInput && (
               <ConversationsList
                 conversationsFilter={conversationsFilter}
                 currentFolder={currentFolder}
