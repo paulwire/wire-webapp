@@ -35,6 +35,16 @@ export type ThreadIndexEntry = {
 type ThreadIndexStore = {
   threadsByKey: Record<string, ThreadIndexEntry>;
   upsertThread: (entry: Partial<ThreadIndexEntry> & Pick<ThreadIndexEntry, 'conversationId' | 'threadId'>) => void;
+  recordThreadReplyEvent: (event: {
+    conversationId: string;
+    threadId: string;
+    eventTime?: string;
+    messageId?: string;
+    authorId?: string;
+    preview?: string;
+    isSelfReply: boolean;
+    hasSelfMention: boolean;
+  }) => void;
   removeThread: (conversationId: string, threadId: string) => void;
   clearThreads: () => void;
 };
@@ -67,6 +77,39 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
                 ...entry,
                 conversationId,
                 threadId,
+              },
+            },
+          };
+        }),
+      recordThreadReplyEvent: ({
+        conversationId,
+        threadId,
+        eventTime,
+        messageId,
+        authorId,
+        preview,
+        isSelfReply,
+        hasSelfMention,
+      }) =>
+        set(state => {
+          const key = getThreadIndexKey(conversationId, threadId);
+          const current = state.threadsByKey[key] ?? getDefaultThreadEntry(conversationId, threadId);
+          const effectiveTime = eventTime ?? new Date().toISOString();
+          const currentTime = new Date(current.lastReplyAt).getTime();
+          const nextTime = new Date(effectiveTime).getTime();
+
+          return {
+            threadsByKey: {
+              ...state.threadsByKey,
+              [key]: {
+                ...current,
+                lastReplyAt: nextTime >= currentTime ? effectiveTime : current.lastReplyAt,
+                lastReplyMessageId: messageId ?? current.lastReplyMessageId,
+                lastReplyAuthorId: authorId ?? current.lastReplyAuthorId,
+                lastReplyPreview: preview ?? current.lastReplyPreview,
+                replyCount: current.replyCount + 1,
+                unreadCount: isSelfReply ? current.unreadCount : current.unreadCount + 1,
+                hasUnreadMentionForSelf: current.hasUnreadMentionForSelf || hasSelfMention,
               },
             },
           };

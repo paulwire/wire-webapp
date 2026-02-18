@@ -69,6 +69,7 @@ import {
   isThreadTrackedForSelf,
   useThreadUnreadRepliesStore,
 } from '../components/MessagesList/threading/threadUnreadRepliesStore';
+import {useThreadIndexStore} from '../components/MessagesList/threading/threadIndexStore';
 import {App} from '../main/app';
 import {initialiseMLSMigrationFlow} from '../mls/MLSMigration';
 import {ClientEvent} from '../repositories/event/Client';
@@ -306,6 +307,7 @@ export const AppMain = ({
       conversation?: string;
       from?: string;
       id?: string;
+      time?: string;
       mentions?: string[];
       is_thread_reply?: boolean;
       thread_id?: string | null;
@@ -330,6 +332,7 @@ export const AppMain = ({
       }
 
       const threadStore = useThreadUnreadRepliesStore.getState();
+      const threadIndexStore = useThreadIndexStore.getState();
       const threadKey = `${conversationId}:${threadId}`;
       const selfDomain = selfUser.qualifiedId?.domain ?? '';
       const mentionPayloads = [
@@ -351,6 +354,16 @@ export const AppMain = ({
         } catch {
           return false;
         }
+      });
+
+      threadIndexStore.recordThreadReplyEvent({
+        conversationId,
+        threadId,
+        eventTime: event.time,
+        messageId: event.id,
+        authorId: event.from,
+        isSelfReply: event.from === selfUser.id,
+        hasSelfMention: isSelfMentionedInThreadReply,
       });
 
       if (event.from === selfUser.id) {

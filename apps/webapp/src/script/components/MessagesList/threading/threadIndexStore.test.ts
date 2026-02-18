@@ -74,4 +74,45 @@ describe('threadIndexStore', () => {
     expect(thread.unreadCount).toBe(2);
     expect(thread.hasUnreadMentionForSelf).toBe(true);
   });
+
+  it('records thread reply events and updates unread counters for non-self replies', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.recordThreadReplyEvent({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      eventTime: '2026-01-02T00:00:00.000Z',
+      messageId: 'message-a',
+      authorId: 'other-user',
+      isSelfReply: false,
+      hasSelfMention: true,
+    });
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+
+    expect(thread.lastReplyAt).toBe('2026-01-02T00:00:00.000Z');
+    expect(thread.lastReplyMessageId).toBe('message-a');
+    expect(thread.lastReplyAuthorId).toBe('other-user');
+    expect(thread.replyCount).toBe(1);
+    expect(thread.unreadCount).toBe(1);
+    expect(thread.hasUnreadMentionForSelf).toBe(true);
+  });
+
+  it('records self replies without increasing unread counter', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.recordThreadReplyEvent({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      eventTime: '2026-01-02T00:00:00.000Z',
+      authorId: 'self-user',
+      isSelfReply: true,
+      hasSelfMention: false,
+    });
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+
+    expect(thread.replyCount).toBe(1);
+    expect(thread.unreadCount).toBe(0);
+  });
 });
