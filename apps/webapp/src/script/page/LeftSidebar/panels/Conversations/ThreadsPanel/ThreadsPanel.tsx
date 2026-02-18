@@ -17,11 +17,28 @@
  *
  */
 
+import {getAllThreadsSorted, useThreadIndexStore} from 'Components/MessagesList/threading/threadIndexStore';
+
 export const ThreadsPanel = () => {
+  const allThreads = useThreadIndexStore(getAllThreadsSorted);
+
+  if (!allThreads.length) {
+    return (
+      <div className="left-list-no-conversations" data-uie-name="threads-placeholder-panel">
+        <h2>All threads</h2>
+        <p>Thread list is coming in the next iteration.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="left-list-no-conversations" data-uie-name="threads-placeholder-panel">
-      <h2>All threads</h2>
-      <p>Thread list is coming in the next iteration.</p>
-    </div>
+    <ul data-uie-name="threads-list">
+      {allThreads.map(thread => (
+        <li key={`${thread.conversationId}:${thread.threadId}`} data-uie-name="threads-list-item">
+          <span>{`${thread.conversationId}:${thread.threadId}`}</span>
+          {thread.unreadCount > 0 && <span>{` unread: ${thread.unreadCount}`}</span>}
+        </li>
+      ))}
+    </ul>
   );
 };
