@@ -50,6 +50,7 @@ import {partition} from 'underscore';
 import {Asset, Availability, Confirmation, GenericMessage} from '@wireapp/protocol-messaging';
 import {WebAppEvents} from '@wireapp/webapp-events';
 
+import {THREAD_REPLY_SENT} from 'Components/MessagesList/threading/threadingEvents';
 import {PrimaryModal} from 'Components/Modals/PrimaryModal';
 import {buildMetadata, ImageMetadata, isAudio, isImage, isVideo} from 'Repositories/assets/AssetMetaDataBuilder';
 import {AssetRepository} from 'Repositories/assets/AssetRepository';
@@ -446,6 +447,10 @@ export class MessageRepository {
       state = (await this.sendText(textPayload)).state;
     }
 
+    if (threadId && state !== MessageSendingState.CANCELED) {
+      this.publishThreadReplySent(conversation.id, threadId);
+    }
+
     if (state !== MessageSendingState.CANCELED) {
       await this.handleLinkPreview(textPayload, conversation.qualifiedId);
     }
@@ -564,7 +569,13 @@ export class MessageRepository {
 
     const blob = await loadUrlBlob(url);
     const textMessage = t('extensionsGiphyMessage', {tag: tag as string | number}, {}, true);
-    this.sendText({conversation: conversationEntity, message: textMessage, quote: quoteEntity, threadId});
+    void this.sendText({conversation: conversationEntity, message: textMessage, quote: quoteEntity, threadId})
+      .then(({state}) => {
+        if (threadId && state !== MessageSendingState.CANCELED) {
+          this.publishThreadReplySent(conversationEntity.id, threadId);
+        }
+      })
+      .catch(() => undefined);
     return this.uploadImages(conversationEntity, [blob], threadId);
   }
 
@@ -635,6 +646,9 @@ export class MessageRepository {
       const {state} = await this.sendAssetRemotedata(conversation, file, messageId, asImage, metaData, threadId);
 
       if (state === SendAndInjectSendingState.FAILED) {
+        if (threadId) {
+          this.publishThreadReplySent(conversation.id, threadId);
+        }
         await this.storeFileInDb(conversation, messageId, file);
         return;
       }
@@ -642,6 +656,10 @@ export class MessageRepository {
       if (state === MessageSendingState.CANCELED) {
         // The user has canceled the upload, no need to do anything else
         return;
+      }
+
+      if (threadId) {
+        this.publishThreadReplySent(conversation.id, threadId);
       }
 
       const uploadDuration = (Date.now() - uploadStarted) / TIME_IN_MILLIS.SECOND;
@@ -661,6 +679,9 @@ export class MessageRepository {
         Asset.NotUploaded.FAILED,
         messageEntity.threadId,
       );
+      if (threadId) {
+        this.publishThreadReplySent(conversation.id, threadId);
+      }
       return this.updateMessageAsUploadFailed(messageEntity);
     } finally {
       window.removeEventListener('beforeunload', beforeUnload);
@@ -1472,8 +1493,11 @@ export class MessageRepository {
         if (!isNaN(timestamp)) {
           changes.time = isoDate;
           messageEntity.timestamp(timestamp);
-          conversationEntity.updateTimestampServer(timestamp, true);
-          conversationEntity.updateTimestamps(messageEntity);
+          const isThreadMessage = !!messageEntity.threadId;
+          if (!isThreadMessage) {
+            conversationEntity.updateTimestampServer(timestamp, true);
+            conversationEntity.updateTimestamps(messageEntity);
+          }
         }
       }
       this.conversationRepositoryProvider().checkMessageTimer(messageEntity);
@@ -1515,6 +1539,10 @@ export class MessageRepository {
       userClients[user.domain][user.id] = user.devices().map(client => client.id);
       return userClients;
     }, {} as QualifiedUserClients);
+  }
+
+  private publishThreadReplySent(conversationId: string, threadId: string) {
+    amplify.publish(THREAD_REPLY_SENT, {conversationId, threadId});
   }
 
   private async generateRecipients(
