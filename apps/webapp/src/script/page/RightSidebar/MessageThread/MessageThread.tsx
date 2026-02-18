@@ -332,6 +332,19 @@ export const MessageThread: FC<MessageThreadProps> = ({
     };
   }, [closeFocusMode, isFocusModeOpen]);
 
+  useEffect(() => {
+    if (!isFocusModeOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFocusModeOpen]);
+
   if (!rootContentMessage) {
     return null;
   }
