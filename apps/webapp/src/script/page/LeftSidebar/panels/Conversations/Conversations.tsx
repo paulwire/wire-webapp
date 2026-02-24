@@ -304,13 +304,18 @@ export const Conversations = ({
         void conversationRepository.updateArchivedConversations();
       }
 
-      if (![SidebarTabs.PREFERENCES, SidebarTabs.CELLS].includes(nextTab)) {
+      if (![SidebarTabs.PREFERENCES, SidebarTabs.CELLS, SidebarTabs.BOARDS].includes(nextTab)) {
         onExitPreferences();
       }
 
       if (nextTab === SidebarTabs.CELLS) {
         switchList(ListState.CELLS);
         switchContent(ContentState.CELLS);
+      }
+
+      if (nextTab === SidebarTabs.BOARDS) {
+        switchList(ListState.CONVERSATIONS);
+        switchContent(ContentState.BOARDS);
       }
 
       clearConversationFilter();

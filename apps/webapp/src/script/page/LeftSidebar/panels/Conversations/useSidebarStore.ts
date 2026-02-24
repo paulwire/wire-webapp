@@ -31,6 +31,7 @@ export enum SidebarTabs {
   CONNECT,
   PREFERENCES,
   CELLS,
+  BOARDS,
 }
 
 export enum ConversationFilter {

@@ -154,6 +154,17 @@ export const EmptyConversationList = ({currentTab, onChangeTab, searchValue = ''
     );
   }
 
+  if (currentTab === SidebarTabs.BOARDS) {
+    return (
+      <div css={wrapper} className="empty-conversations-list">
+        <div>
+          <p css={paragraphBold}>Boards</p>
+          <p css={paragraphGray}>Boards POC is enabled. Create board support will be added in the next iteration.</p>
+        </div>
+      </div>
+    );
+  }
+
   return null;
 };
 

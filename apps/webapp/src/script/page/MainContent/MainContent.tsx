@@ -134,6 +134,7 @@ const MainContent = ({
     [ContentState.PREFERENCES_DEVICES]: t('accessibility.headings.preferencesDevices'),
     [ContentState.PREFERENCES_OPTIONS]: t('accessibility.headings.preferencesOptions'),
     [ContentState.WATERMARK]: t('accessibility.headings.noConversation'),
+    [ContentState.BOARDS]: 'Boards',
   };
 
   const title = statesTitle[contentState];
@@ -277,6 +278,15 @@ const MainContent = ({
                 userRepository={repositories.user}
                 conversationRepository={repositories.conversation}
               />
+            )}
+
+            {contentState === ContentState.BOARDS && (
+              <div className={cx('preferences-page', incomingCssClass)} ref={removeAnimationsClass}>
+                <div className="preferences-page-content">
+                  <h2>Boards</h2>
+                  <p>Boards POC is enabled. Board list and Kanban view will be added in the next iteration.</p>
+                </div>
+              </div>
             )}
           </>
         </Animated>

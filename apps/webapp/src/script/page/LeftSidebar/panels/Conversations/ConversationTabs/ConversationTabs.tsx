@@ -220,6 +220,23 @@ export const ConversationTabs = ({
         <div className="conversations-sidebar-divider" />
 
         <div className="conversations-sidebar-title" css={{marginBlock: '32px 0'}}>
+          Boards
+        </div>
+
+        <ConversationTab
+          title="All boards"
+          label="All boards"
+          type={SidebarTabs.BOARDS}
+          Icon={<CollectionIcon />}
+          onChangeTab={onChangeTab}
+          conversationTabIndex={conversationTabs.length + 1}
+          dataUieName="go-boards-view"
+          isActive={currentTab === SidebarTabs.BOARDS}
+        />
+
+        <div className="conversations-sidebar-divider" />
+
+        <div className="conversations-sidebar-title" css={{marginBlock: '32px 0'}}>
           {t('conversationFooterContacts')}
         </div>
 
@@ -229,7 +246,7 @@ export const ConversationTabs = ({
           type={SidebarTabs.CONNECT}
           Icon={<Icon.AddParticipantsIcon />}
           onChangeTab={onChangeTab}
-          conversationTabIndex={conversationTabs.length + 1}
+          conversationTabIndex={conversationTabs.length + 2}
           dataUieName="go-people"
           isActive={currentTab === SidebarTabs.CONNECT}
         />
@@ -248,7 +265,7 @@ export const ConversationTabs = ({
               type={SidebarTabs.CELLS}
               Icon={<CollectionIcon />}
               onChangeTab={onChangeTab}
-              conversationTabIndex={conversationTabs.length + 2}
+              conversationTabIndex={conversationTabs.length + 3}
               dataUieName="go-cells"
               isActive={currentTab === SidebarTabs.CELLS}
             />

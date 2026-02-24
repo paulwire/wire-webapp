@@ -53,6 +53,7 @@ export enum ContentState {
   PREFERENCES_OPTIONS = 'ContentState.PREFERENCES_OPTIONS',
   WATERMARK = 'ContentState.WATERMARK',
   CELLS = 'ContentState.CELLS',
+  BOARDS = 'ContentState.BOARDS',
 }
 
 export enum ListState {
