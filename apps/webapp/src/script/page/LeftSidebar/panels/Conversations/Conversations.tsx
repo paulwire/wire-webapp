@@ -66,6 +66,7 @@ import {SidebarStatus, SidebarTabs, useSidebarStore} from './useSidebarStore';
 import {useThreadIndexStore} from '../../../../components/MessagesList/threading/threadIndexStore';
 import {useThreadUnreadRepliesStore} from '../../../../components/MessagesList/threading/threadUnreadRepliesStore';
 import {generateConversationUrl} from '../../../../router/routeGenerator';
+import {navigate} from '../../../../router/Router';
 import {createNavigateKeyboard} from '../../../../router/routerBindings';
 import {ListViewModel} from '../../../../view_model/ListViewModel';
 import {ListWrapper} from '../ListWrapper';
@@ -262,6 +263,7 @@ export const Conversations = ({
         return;
       }
 
+      navigate(generateConversationUrl(conversation.qualifiedId));
       amplify.publish(WebAppEvents.CONVERSATION.SHOW, conversation, {});
 
       let threadRootMessage: Message | undefined = conversation.getMessage(thread.threadId);
