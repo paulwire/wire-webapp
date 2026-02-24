@@ -82,6 +82,22 @@ const getBackendEventThreadId = (event?: ThreadBackendEvent): string | null =>
       null,
   );
 
+const mergeThreadReplies = (persistedReplies: ContentMessage[], localReplies: ContentMessage[]) => {
+  const mergedById = new Map<string, ContentMessage>();
+
+  persistedReplies.forEach(reply => {
+    mergedById.set(reply.id, reply);
+  });
+
+  // Keep local/in-memory replies as source of truth when they already exist in the active conversation.
+  // This avoids flicker when storage/backend refresh is briefly behind optimistic local sends.
+  localReplies.forEach(reply => {
+    mergedById.set(reply.id, reply);
+  });
+
+  return Array.from(mergedById.values());
+};
+
 interface MessageThreadProps {
   activeConversation: Conversation;
   rootMessage: MessageEntity;
@@ -147,9 +163,13 @@ export const MessageThread: FC<MessageThreadProps> = ({
       const messagesWithUsers = await Promise.all(
         contentMessages.map(message => messageRepository.ensureMessageSender(message)),
       );
+      const localThreadReplies = activeConversation
+        .messages()
+        .filter((message): message is ContentMessage => isContentMessage(message) && message.threadId === threadId);
+      const mergedReplies = mergeThreadReplies(messagesWithUsers, localThreadReplies);
 
       if (isMountedRef.current && requestId === latestLoadRequestIdRef.current) {
-        setThreadReplies(messagesWithUsers);
+        setThreadReplies(mergedReplies);
       }
     } catch (error) {
       logger.warn(
