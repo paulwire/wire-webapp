@@ -51,6 +51,18 @@ type ThreadIndexStore = {
   }) => void;
   markThreadRootMessageBySelf: (conversationId: string, threadId: string) => void;
   markThreadRead: (conversationId: string, threadId: string) => void;
+  reconcileHydratedThread: (entry: {
+    conversationId: string;
+    threadId: string;
+    lastReplyAt: string;
+    lastReplyMessageId?: string;
+    lastReplyAuthorId?: string;
+    lastReplyPreview?: string;
+    replyCount: number;
+    hasReplyBySelf: boolean;
+    isRootMessageBySelf: boolean;
+  }) => void;
+  pruneToMostRecent: (maxEntries: number) => void;
   removeThread: (conversationId: string, threadId: string) => void;
   clearThreads: () => void;
 };
@@ -167,6 +179,61 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
               },
             },
           };
+        }),
+      reconcileHydratedThread: ({
+        conversationId,
+        threadId,
+        lastReplyAt,
+        lastReplyMessageId,
+        lastReplyAuthorId,
+        lastReplyPreview,
+        replyCount,
+        hasReplyBySelf,
+        isRootMessageBySelf,
+      }) =>
+        set(state => {
+          const key = getThreadIndexKey(conversationId, threadId);
+          const current = state.threadsByKey[key] ?? getDefaultThreadEntry(conversationId, threadId);
+          const currentTime = new Date(current.lastReplyAt).getTime();
+          const hydratedTime = new Date(lastReplyAt).getTime();
+          const shouldUpdateLatestMetadata = hydratedTime >= currentTime;
+
+          return {
+            threadsByKey: {
+              ...state.threadsByKey,
+              [key]: {
+                ...current,
+                lastReplyAt: shouldUpdateLatestMetadata ? lastReplyAt : current.lastReplyAt,
+                lastReplyMessageId:
+                  shouldUpdateLatestMetadata && lastReplyMessageId ? lastReplyMessageId : current.lastReplyMessageId,
+                lastReplyAuthorId:
+                  shouldUpdateLatestMetadata && lastReplyAuthorId ? lastReplyAuthorId : current.lastReplyAuthorId,
+                lastReplyPreview:
+                  shouldUpdateLatestMetadata && lastReplyPreview ? lastReplyPreview : current.lastReplyPreview,
+                replyCount: Math.max(current.replyCount, replyCount),
+                hasReplyBySelf: current.hasReplyBySelf || hasReplyBySelf,
+                isRootMessageBySelf: current.isRootMessageBySelf || isRootMessageBySelf,
+              },
+            },
+          };
+        }),
+      pruneToMostRecent: maxEntries =>
+        set(state => {
+          if (maxEntries < 1) {
+            return {threadsByKey: {}};
+          }
+
+          const sorted = getAllThreadsSorted(state);
+          if (sorted.length <= maxEntries) {
+            return state;
+          }
+
+          const pruned = sorted.slice(0, maxEntries).reduce<Record<string, ThreadIndexEntry>>((accumulator, thread) => {
+            accumulator[getThreadIndexKey(thread.conversationId, thread.threadId)] = thread;
+            return accumulator;
+          }, {});
+
+          return {threadsByKey: pruned};
         }),
       removeThread: (conversationId, threadId) =>
         set(state => {

@@ -286,4 +286,91 @@ describe('threadIndexStore', () => {
 
     expect(threads.map(thread => thread.threadId)).toEqual(['thread-contributed', 'thread-mine']);
   });
+
+  it('reconciles hydrated threads without lowering existing reply count', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-24T00:00:00.000Z',
+      replyCount: 10,
+      unreadCount: 3,
+      hasUnreadMentionForSelf: true,
+    });
+
+    store.reconcileHydratedThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-20T00:00:00.000Z',
+      replyCount: 4,
+      hasReplyBySelf: true,
+      isRootMessageBySelf: false,
+      lastReplyMessageId: 'message-old',
+    });
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.replyCount).toBe(10);
+    expect(thread.unreadCount).toBe(3);
+    expect(thread.hasUnreadMentionForSelf).toBe(true);
+    expect(thread.hasReplyBySelf).toBe(true);
+    expect(thread.lastReplyMessageId).not.toBe('message-old');
+  });
+
+  it('reconciles hydrated threads and updates metadata when hydration has newer timestamp', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-20T00:00:00.000Z',
+      replyCount: 2,
+      unreadCount: 0,
+    });
+
+    store.reconcileHydratedThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-24T00:00:00.000Z',
+      replyCount: 4,
+      hasReplyBySelf: false,
+      isRootMessageBySelf: true,
+      lastReplyMessageId: 'message-new',
+      lastReplyAuthorId: 'user-new',
+      lastReplyPreview: 'preview-new',
+    });
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.replyCount).toBe(4);
+    expect(thread.lastReplyAt).toBe('2026-02-24T00:00:00.000Z');
+    expect(thread.lastReplyMessageId).toBe('message-new');
+    expect(thread.lastReplyAuthorId).toBe('user-new');
+    expect(thread.lastReplyPreview).toBe('preview-new');
+    expect(thread.isRootMessageBySelf).toBe(true);
+  });
+
+  it('prunes thread index to most recent entries', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-old',
+      lastReplyAt: '2026-02-01T00:00:00.000Z',
+    });
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-new',
+      lastReplyAt: '2026-02-03T00:00:00.000Z',
+    });
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-mid',
+      lastReplyAt: '2026-02-02T00:00:00.000Z',
+    });
+
+    store.pruneToMostRecent(2);
+
+    const threads = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(threads.map(thread => thread.threadId)).toEqual(['thread-new', 'thread-mid']);
+  });
 });
