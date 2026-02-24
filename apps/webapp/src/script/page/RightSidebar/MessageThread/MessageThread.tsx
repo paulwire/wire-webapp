@@ -30,6 +30,7 @@ import * as Icon from 'Components/Icon';
 import {InputBar} from 'Components/InputBar';
 import {Message as MessageComponent} from 'Components/MessagesList/Message';
 import {MarkerComponent} from 'Components/MessagesList/Message/Marker';
+import {useThreadIndexStore} from 'Components/MessagesList/threading/threadIndexStore';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
 import {useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/messagesGroup';
@@ -191,6 +192,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
 
     const rafId = window.requestAnimationFrame(() => {
       useThreadUnreadRepliesStore.getState().markThreadAsRead(activeConversation.id, threadId);
+      useThreadIndexStore.getState().markThreadRead(activeConversation.id, threadId);
     });
 
     return () => {

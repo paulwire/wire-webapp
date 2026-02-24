@@ -395,7 +395,9 @@ export const AppMain = ({
         const rootEvent = await repositories.event.eventService.loadEvent(conversationId, threadId);
         if (rootEvent?.from === selfUser.id) {
           const freshStore = useThreadUnreadRepliesStore.getState();
+          const freshThreadIndexStore = useThreadIndexStore.getState();
           freshStore.markThreadRootAuthoredBySelf(conversationId, threadId);
+          freshThreadIndexStore.markThreadRootMessageBySelf(conversationId, threadId);
           freshStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);
           return;
         }

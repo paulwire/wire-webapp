@@ -17,7 +17,7 @@
  *
  */
 
-import {getAllThreadsSorted, useThreadIndexStore} from './threadIndexStore';
+import {getAllThreadsSorted, isThreadInactive, useThreadIndexStore} from './threadIndexStore';
 
 describe('threadIndexStore', () => {
   beforeEach(() => {
@@ -114,5 +114,113 @@ describe('threadIndexStore', () => {
 
     expect(thread.replyCount).toBe(1);
     expect(thread.unreadCount).toBe(0);
+    expect(thread.hasReplyBySelf).toBe(true);
+  });
+
+  it('ignores duplicate reply events for the same message id', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.recordThreadReplyEvent({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      eventTime: '2026-01-02T00:00:00.000Z',
+      messageId: 'message-a',
+      authorId: 'other-user',
+      isSelfReply: false,
+      hasSelfMention: false,
+    });
+
+    store.recordThreadReplyEvent({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      eventTime: '2026-01-02T00:00:01.000Z',
+      messageId: 'message-a',
+      authorId: 'other-user',
+      isSelfReply: false,
+      hasSelfMention: false,
+    });
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.replyCount).toBe(1);
+    expect(thread.unreadCount).toBe(1);
+  });
+
+  it('keeps latest reply metadata stable for out-of-order events', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.recordThreadReplyEvent({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      eventTime: '2026-01-03T00:00:00.000Z',
+      messageId: 'message-new',
+      authorId: 'new-user',
+      preview: 'new',
+      isSelfReply: false,
+      hasSelfMention: false,
+    });
+
+    store.recordThreadReplyEvent({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      eventTime: '2026-01-02T00:00:00.000Z',
+      messageId: 'message-old',
+      authorId: 'old-user',
+      preview: 'old',
+      isSelfReply: false,
+      hasSelfMention: false,
+    });
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.lastReplyAt).toBe('2026-01-03T00:00:00.000Z');
+    expect(thread.lastReplyMessageId).toBe('message-new');
+    expect(thread.lastReplyAuthorId).toBe('new-user');
+    expect(thread.lastReplyPreview).toBe('new');
+  });
+
+  it('marks thread as read in thread index', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      unreadCount: 4,
+      hasUnreadMentionForSelf: true,
+    });
+
+    store.markThreadRead('conversation-a', 'thread-a');
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.unreadCount).toBe(0);
+    expect(thread.hasUnreadMentionForSelf).toBe(false);
+  });
+
+  it('marks thread root ownership for self', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.markThreadRootMessageBySelf('conversation-a', 'thread-a');
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.isRootMessageBySelf).toBe(true);
+  });
+
+  it('detects inactive threads with a 30 day window', () => {
+    const now = new Date('2026-02-24T00:00:00.000Z').getTime();
+
+    expect(
+      isThreadInactive(
+        {
+          conversationId: 'conversation-a',
+          threadId: 'thread-a',
+          lastReplyAt: '2026-01-20T00:00:00.000Z',
+          replyCount: 1,
+          unreadCount: 0,
+          hasUnreadMentionForSelf: false,
+          hasReplyBySelf: false,
+          isRootMessageBySelf: false,
+          seenMessageIds: [],
+        },
+        now,
+      ),
+    ).toBe(true);
   });
 });

@@ -30,6 +30,10 @@ export type ThreadIndexEntry = {
   replyCount: number;
   unreadCount: number;
   hasUnreadMentionForSelf: boolean;
+  hasReplyBySelf: boolean;
+  isRootMessageBySelf: boolean;
+  // POC dedupe strategy; we may replace this with a bounded/indexed approach later.
+  seenMessageIds: string[];
 };
 
 type ThreadIndexStore = {
@@ -45,6 +49,8 @@ type ThreadIndexStore = {
     isSelfReply: boolean;
     hasSelfMention: boolean;
   }) => void;
+  markThreadRootMessageBySelf: (conversationId: string, threadId: string) => void;
+  markThreadRead: (conversationId: string, threadId: string) => void;
   removeThread: (conversationId: string, threadId: string) => void;
   clearThreads: () => void;
 };
@@ -58,6 +64,9 @@ const getDefaultThreadEntry = (conversationId: string, threadId: string): Thread
   replyCount: 0,
   unreadCount: 0,
   hasUnreadMentionForSelf: false,
+  hasReplyBySelf: false,
+  isRootMessageBySelf: false,
+  seenMessageIds: [],
 });
 
 const useThreadIndexStore = create<ThreadIndexStore>()(
@@ -94,22 +103,67 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
         set(state => {
           const key = getThreadIndexKey(conversationId, threadId);
           const current = state.threadsByKey[key] ?? getDefaultThreadEntry(conversationId, threadId);
+          if (messageId && current.seenMessageIds.includes(messageId)) {
+            return state;
+          }
+
           const effectiveTime = eventTime ?? new Date().toISOString();
           const currentTime = new Date(current.lastReplyAt).getTime();
           const nextTime = new Date(effectiveTime).getTime();
+          const shouldUpdateLatestMetadata = nextTime >= currentTime;
 
           return {
             threadsByKey: {
               ...state.threadsByKey,
               [key]: {
                 ...current,
-                lastReplyAt: nextTime >= currentTime ? effectiveTime : current.lastReplyAt,
-                lastReplyMessageId: messageId ?? current.lastReplyMessageId,
-                lastReplyAuthorId: authorId ?? current.lastReplyAuthorId,
-                lastReplyPreview: preview ?? current.lastReplyPreview,
+                lastReplyAt: shouldUpdateLatestMetadata ? effectiveTime : current.lastReplyAt,
+                lastReplyMessageId:
+                  shouldUpdateLatestMetadata && messageId ? messageId : current.lastReplyMessageId,
+                lastReplyAuthorId:
+                  shouldUpdateLatestMetadata && authorId ? authorId : current.lastReplyAuthorId,
+                lastReplyPreview:
+                  shouldUpdateLatestMetadata && preview ? preview : current.lastReplyPreview,
                 replyCount: current.replyCount + 1,
                 unreadCount: isSelfReply ? current.unreadCount : current.unreadCount + 1,
                 hasUnreadMentionForSelf: current.hasUnreadMentionForSelf || hasSelfMention,
+                hasReplyBySelf: current.hasReplyBySelf || isSelfReply,
+                seenMessageIds: messageId ? [...current.seenMessageIds, messageId] : current.seenMessageIds,
+              },
+            },
+          };
+        }),
+      markThreadRootMessageBySelf: (conversationId, threadId) =>
+        set(state => {
+          const key = getThreadIndexKey(conversationId, threadId);
+          const current = state.threadsByKey[key] ?? getDefaultThreadEntry(conversationId, threadId);
+
+          return {
+            threadsByKey: {
+              ...state.threadsByKey,
+              [key]: {
+                ...current,
+                isRootMessageBySelf: true,
+              },
+            },
+          };
+        }),
+      markThreadRead: (conversationId, threadId) =>
+        set(state => {
+          const key = getThreadIndexKey(conversationId, threadId);
+          const current = state.threadsByKey[key];
+
+          if (!current) {
+            return state;
+          }
+
+          return {
+            threadsByKey: {
+              ...state.threadsByKey,
+              [key]: {
+                ...current,
+                unreadCount: 0,
+                hasUnreadMentionForSelf: false,
               },
             },
           };
@@ -145,5 +199,10 @@ export const getAllThreadsSorted = (state: ThreadIndexStore): ThreadIndexEntry[]
     return getThreadIndexKey(a.conversationId, a.threadId).localeCompare(getThreadIndexKey(b.conversationId, b.threadId));
   });
 };
+
+const DAYS_30_IN_MS = 30 * 24 * 60 * 60 * 1000;
+
+export const isThreadInactive = (thread: ThreadIndexEntry, now = Date.now()) =>
+  now - new Date(thread.lastReplyAt).getTime() > DAYS_30_IN_MS;
 
 export {useThreadIndexStore};
