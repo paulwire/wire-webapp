@@ -153,6 +153,12 @@ export const Conversations = ({
     () => conversationLabelRepository.getLabelConversations(favoriteLabel, conversations),
     [conversationLabelRepository, conversations, favoriteLabel],
   );
+  const conversationLabelsById = useMemo(() => {
+    return visibleConversations.reduce<Record<string, string>>((labels, conversation) => {
+      labels[conversation.id] = conversation.display_name();
+      return labels;
+    }, {});
+  }, [visibleConversations]);
 
   const isPreferences = currentTab === SidebarTabs.PREFERENCES;
   const isCells = currentTab === SidebarTabs.CELLS;
@@ -486,7 +492,9 @@ export const Conversations = ({
               />
             )}
 
-            {isThreads && <ThreadsPanel onOpenThread={openIndexedThread} />}
+            {isThreads && (
+              <ThreadsPanel onOpenThread={openIndexedThread} conversationLabelsById={conversationLabelsById} />
+            )}
 
             {!isThreads && showSearchInput && (
               <ConversationsList

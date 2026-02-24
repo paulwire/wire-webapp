@@ -48,7 +48,9 @@ describe('ThreadsPanel', () => {
 
     const {getByText} = render(withTheme(<ThreadsPanel />));
 
-    expect(getByText('conversation-a:thread-a')).toBeTruthy();
+    expect(getByText('conversation-a')).toBeTruthy();
+    expect(getByText('Last reply')).toBeTruthy();
+    expect(getByText('· 3 replies')).toBeTruthy();
     expect(getByText(' unread: 2')).toBeTruthy();
   });
 
@@ -63,11 +65,11 @@ describe('ThreadsPanel', () => {
 
     const {queryByText, getByRole} = render(withTheme(<ThreadsPanel />));
 
-    expect(queryByText('conversation-a:thread-inactive')).toBeNull();
+    expect(queryByText('conversation-a')).toBeNull();
 
     fireEvent.click(getByRole('button', {name: 'Inactive'}));
 
-    expect(queryByText('conversation-a:thread-inactive')).toBeTruthy();
+    expect(queryByText('conversation-a')).toBeTruthy();
   });
 
   it('calls onOpenThread when clicking a thread row', () => {
@@ -82,7 +84,7 @@ describe('ThreadsPanel', () => {
 
     const {getByRole} = render(withTheme(<ThreadsPanel onOpenThread={onOpenThread} />));
 
-    fireEvent.click(getByRole('button', {name: 'conversation-a:thread-a'}));
+    fireEvent.click(getByRole('button', {name: /conversation-a/}));
 
     expect(onOpenThread).toHaveBeenCalledTimes(1);
     expect(onOpenThread).toHaveBeenCalledWith(
@@ -91,5 +93,21 @@ describe('ThreadsPanel', () => {
         threadId: 'thread-a',
       }),
     );
+  });
+
+  it('renders provided conversation labels', () => {
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-01-02T00:00:00.000Z',
+      unreadCount: 0,
+      replyCount: 1,
+    });
+
+    const {getByText} = render(
+      withTheme(<ThreadsPanel conversationLabelsById={{'conversation-a': 'Project Alpha'}} />),
+    );
+
+    expect(getByText('Project Alpha')).toBeTruthy();
   });
 });

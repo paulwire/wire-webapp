@@ -24,6 +24,7 @@ import {
   getFilteredThreadsSorted,
   useThreadIndexStore,
 } from 'Components/MessagesList/threading/threadIndexStore';
+import {formatTimestamp} from 'src/script/util/TimeUtil';
 
 type ThreadFilterKey = 'allThreads' | 'myThreads' | 'contributed' | 'inactive';
 
@@ -36,9 +37,10 @@ const FILTER_LABELS: Record<ThreadFilterKey, string> = {
 
 type ThreadsPanelProps = {
   onOpenThread?: (thread: ThreadIndexEntry) => void;
+  conversationLabelsById?: Record<string, string>;
 };
 
-export const ThreadsPanel = ({onOpenThread}: ThreadsPanelProps) => {
+export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}}: ThreadsPanelProps) => {
   const [filters, setFilters] = useState({
     allThreads: true,
     myThreads: false,
@@ -111,7 +113,16 @@ export const ThreadsPanel = ({onOpenThread}: ThreadsPanelProps) => {
                 type="button"
                 data-uie-name="threads-list-open-button"
                 onClick={() => onOpenThread?.(thread)}
-              >{`${thread.conversationId}:${thread.threadId}`}</button>
+              >
+                <span data-uie-name="threads-list-item-conversation-label">
+                  {conversationLabelsById[thread.conversationId] ?? thread.conversationId}
+                </span>
+                <span>{` · ${formatTimestamp(thread.lastReplyAt, false)}`}</span>
+              </button>
+              <div data-uie-name="threads-list-item-meta">
+                <span>{thread.lastReplyAuthorId ? `Last reply by ${thread.lastReplyAuthorId}` : 'Last reply'}</span>
+                <span>{` · ${thread.replyCount} ${thread.replyCount === 1 ? 'reply' : 'replies'}`}</span>
+              </div>
               {thread.unreadCount > 0 && <span>{` unread: ${thread.unreadCount}`}</span>}
             </li>
           ))}
