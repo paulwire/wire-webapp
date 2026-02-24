@@ -117,7 +117,7 @@ export const Conversations = ({
   const {isChannelsEnabled} = useChannelsFeatureFlag();
   const [conversationsFilter, setConversationsFilter] = useState<string>('');
   const {classifiedDomains, isTeam} = useKoSubscribableChildren(teamState, ['classifiedDomains', 'isTeam']);
-  const {connectRequests} = useKoSubscribableChildren(userState, ['connectRequests']);
+  const {connectRequests, users} = useKoSubscribableChildren(userState, ['connectRequests', 'users']);
   const {notifications} = useKoSubscribableChildren(preferenceNotificationRepository, ['notifications']);
 
   const {isTemporaryGuest} = useKoSubscribableChildren(selfUser, ['isTemporaryGuest']);
@@ -160,6 +160,12 @@ export const Conversations = ({
       return labels;
     }, {});
   }, [visibleConversations]);
+  const authorLabelsById = useMemo(() => {
+    return users.reduce<Record<string, string>>((labels, user) => {
+      labels[user.id] = user.name();
+      return labels;
+    }, {});
+  }, [users]);
 
   const isPreferences = currentTab === SidebarTabs.PREFERENCES;
   const isCells = currentTab === SidebarTabs.CELLS;
@@ -495,7 +501,11 @@ export const Conversations = ({
             )}
 
             {isThreads && (
-              <ThreadsPanel onOpenThread={openIndexedThread} conversationLabelsById={conversationLabelsById} />
+              <ThreadsPanel
+                onOpenThread={openIndexedThread}
+                conversationLabelsById={conversationLabelsById}
+                authorLabelsById={authorLabelsById}
+              />
             )}
 
             {!isThreads && showSearchInput && (

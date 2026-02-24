@@ -110,4 +110,19 @@ describe('ThreadsPanel', () => {
 
     expect(getByText('Project Alpha')).toBeTruthy();
   });
+
+  it('renders provided author labels', () => {
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-01-02T00:00:00.000Z',
+      unreadCount: 0,
+      replyCount: 1,
+      lastReplyAuthorId: 'user-a',
+    });
+
+    const {getByText} = render(withTheme(<ThreadsPanel authorLabelsById={{'user-a': 'Ada Lovelace'}} />));
+
+    expect(getByText('Last reply by Ada Lovelace')).toBeTruthy();
+  });
 });

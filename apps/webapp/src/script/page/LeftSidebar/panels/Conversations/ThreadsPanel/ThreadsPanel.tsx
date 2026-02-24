@@ -38,9 +38,10 @@ const FILTER_LABELS: Record<ThreadFilterKey, string> = {
 type ThreadsPanelProps = {
   onOpenThread?: (thread: ThreadIndexEntry) => void;
   conversationLabelsById?: Record<string, string>;
+  authorLabelsById?: Record<string, string>;
 };
 
-export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}}: ThreadsPanelProps) => {
+export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorLabelsById = {}}: ThreadsPanelProps) => {
   const [filters, setFilters] = useState({
     allThreads: true,
     myThreads: false,
@@ -120,7 +121,11 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}}: Thread
                 <span>{` · ${formatTimestamp(thread.lastReplyAt, false)}`}</span>
               </button>
               <div data-uie-name="threads-list-item-meta">
-                <span>{thread.lastReplyAuthorId ? `Last reply by ${thread.lastReplyAuthorId}` : 'Last reply'}</span>
+                <span>
+                  {thread.lastReplyAuthorId
+                    ? `Last reply by ${authorLabelsById[thread.lastReplyAuthorId] ?? thread.lastReplyAuthorId}`
+                    : 'Last reply'}
+                </span>
                 <span>{` · ${thread.replyCount} ${thread.replyCount === 1 ? 'reply' : 'replies'}`}</span>
               </div>
               {thread.unreadCount > 0 && <span>{` unread: ${thread.unreadCount}`}</span>}
