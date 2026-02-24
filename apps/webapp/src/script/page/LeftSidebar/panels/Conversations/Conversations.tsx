@@ -304,13 +304,17 @@ export const Conversations = ({
         return;
       }
 
+      if (currentTab === SidebarTabs.THREADS) {
+        return;
+      }
+
       const includesConversation = currentTabConversations.includes(conversation);
 
       if (!includesConversation) {
         setCurrentTab(SidebarTabs.RECENT);
       }
     });
-  }, [currentTabConversations]);
+  }, [currentTab, currentTabConversations, setCurrentTab]);
 
   useEffect(() => {
     if (activeConversation && !conversationState.isVisible(activeConversation)) {
