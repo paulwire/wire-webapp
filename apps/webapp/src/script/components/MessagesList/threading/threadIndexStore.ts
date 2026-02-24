@@ -205,4 +205,29 @@ const DAYS_30_IN_MS = 30 * 24 * 60 * 60 * 1000;
 export const isThreadInactive = (thread: ThreadIndexEntry, now = Date.now()) =>
   now - new Date(thread.lastReplyAt).getTime() > DAYS_30_IN_MS;
 
+export type ThreadListFilters = {
+  allThreads: boolean;
+  myThreads: boolean;
+  contributed: boolean;
+  inactive: boolean;
+};
+
+export const getFilteredThreadsSorted = (
+  state: ThreadIndexStore,
+  filters: ThreadListFilters,
+  now = Date.now(),
+): ThreadIndexEntry[] => {
+  return getAllThreadsSorted(state).filter(thread => {
+    if (!filters.inactive && isThreadInactive(thread, now)) {
+      return false;
+    }
+
+    if (filters.allThreads) {
+      return true;
+    }
+
+    return (filters.myThreads && thread.isRootMessageBySelf) || (filters.contributed && thread.hasReplyBySelf);
+  });
+};
+
 export {useThreadIndexStore};

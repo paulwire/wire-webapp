@@ -30,8 +30,10 @@ import {useConversationFocus} from 'Hooks/useConversationFocus';
 import {CallState} from 'Repositories/calling/CallState';
 import {createLabel} from 'Repositories/conversation/ConversationLabelRepository';
 import {ConversationRepository} from 'Repositories/conversation/ConversationRepository';
+import {MessageRepository} from 'Repositories/conversation/MessageRepository';
 import {ConversationState} from 'Repositories/conversation/ConversationState';
 import type {Conversation} from 'Repositories/entity/Conversation';
+import type {Message} from 'Repositories/entity/message/Message';
 import {User} from 'Repositories/entity/User';
 import {IntegrationRepository} from 'Repositories/integration/IntegrationRepository';
 import {PreferenceNotificationRepository} from 'Repositories/notification/PreferenceNotificationRepository';
@@ -62,11 +64,14 @@ import {useDraftConversations} from './hooks/useDraftConversations';
 import {useFolderStore} from './useFoldersStore';
 import {SidebarStatus, SidebarTabs, useSidebarStore} from './useSidebarStore';
 
+import {useThreadIndexStore} from '../../../../components/MessagesList/threading/threadIndexStore';
+import {useThreadUnreadRepliesStore} from '../../../../components/MessagesList/threading/threadUnreadRepliesStore';
 import {generateConversationUrl} from '../../../../router/routeGenerator';
 import {createNavigateKeyboard} from '../../../../router/routerBindings';
 import {ListViewModel} from '../../../../view_model/ListViewModel';
 import {ListWrapper} from '../ListWrapper';
 import {StartUI} from '../StartUI';
+import {PanelState} from '../../../RightSidebar';
 
 type ConversationsProps = {
   callState?: CallState;
@@ -165,9 +170,11 @@ export const Conversations = ({
   ].includes(currentTab);
 
   const {setCurrentView} = useAppMainState(useShallow(state => state.responsiveView));
+  const openRightSidebarPanel = useAppMainState(state => state.rightSidebar.goTo);
   const {openFolder, closeFolder, expandedFolder, isFoldersTabOpen, toggleFoldersTab} = useFolderStore(
     useShallow(state => state),
   );
+  const messageRepository = container.resolve(MessageRepository);
   const {currentFocus, handleKeyDown, resetConversationFocus} = useConversationFocus(conversations);
 
   // false when screen is larger than 1000px
@@ -242,6 +249,41 @@ export const Conversations = ({
       isSideBarOpen ? EventName.UI.SIDEBAR_COLLAPSE : EventName.UI.SIDEBAR_UNCOLLAPSE,
     );
   }, [isFoldersTabOpen, isSideBarOpen, setSidebarStatus, toggleFoldersTab]);
+
+  const openIndexedThread = useCallback(
+    async (thread: {conversationId: string; threadId: string}) => {
+      const conversation = conversationState.findConversation({id: thread.conversationId, domain: ''});
+      if (!conversation) {
+        return;
+      }
+
+      amplify.publish(WebAppEvents.CONVERSATION.SHOW, conversation, {});
+
+      let threadRootMessage: Message | undefined = conversation.getMessage(thread.threadId);
+      if (!threadRootMessage) {
+        try {
+          threadRootMessage = await messageRepository.getMessageInConversationById(conversation, thread.threadId);
+        } catch {
+          return;
+        }
+      }
+
+      if (!threadRootMessage) {
+        return;
+      }
+
+      if (threadRootMessage.user().isMe) {
+        useThreadUnreadRepliesStore.getState().markThreadRootAuthoredBySelf(thread.conversationId, thread.threadId);
+        useThreadIndexStore.getState().markThreadRootMessageBySelf(thread.conversationId, thread.threadId);
+      }
+
+      const threadMessage = threadRootMessage;
+      window.requestAnimationFrame(() => {
+        openRightSidebarPanel(PanelState.MESSAGE_THREAD, {entity: threadMessage});
+      });
+    },
+    [conversationState, messageRepository, openRightSidebarPanel],
+  );
 
   useEffect(() => {
     amplify.subscribe(WebAppEvents.CONVERSATION.SHOW, (conversation?: Conversation) => {
@@ -445,7 +487,7 @@ export const Conversations = ({
               />
             )}
 
-            {isThreads && <ThreadsPanel />}
+            {isThreads && <ThreadsPanel onOpenThread={openIndexedThread} />}
 
             {!isThreads && showSearchInput && (
               <ConversationsList

@@ -17,7 +17,7 @@
  *
  */
 
-import {getAllThreadsSorted, isThreadInactive, useThreadIndexStore} from './threadIndexStore';
+import {getAllThreadsSorted, getFilteredThreadsSorted, isThreadInactive, useThreadIndexStore} from './threadIndexStore';
 
 describe('threadIndexStore', () => {
   beforeEach(() => {
@@ -222,5 +222,68 @@ describe('threadIndexStore', () => {
         now,
       ),
     ).toBe(true);
+  });
+
+  it('filters to active threads by default when inactive filter is off', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-active',
+      lastReplyAt: '2026-02-20T00:00:00.000Z',
+    });
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-inactive',
+      lastReplyAt: '2026-01-10T00:00:00.000Z',
+    });
+
+    const threads = getFilteredThreadsSorted(
+      useThreadIndexStore.getState(),
+      {
+        allThreads: true,
+        myThreads: false,
+        contributed: false,
+        inactive: false,
+      },
+      new Date('2026-02-24T00:00:00.000Z').getTime(),
+    );
+
+    expect(threads.map(thread => thread.threadId)).toEqual(['thread-active']);
+  });
+
+  it('applies ownership filters when all threads filter is disabled', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-mine',
+      lastReplyAt: '2026-02-20T00:00:00.000Z',
+      isRootMessageBySelf: true,
+    });
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-contributed',
+      lastReplyAt: '2026-02-20T00:00:00.000Z',
+      hasReplyBySelf: true,
+    });
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-other',
+      lastReplyAt: '2026-02-20T00:00:00.000Z',
+    });
+
+    const threads = getFilteredThreadsSorted(
+      useThreadIndexStore.getState(),
+      {
+        allThreads: false,
+        myThreads: true,
+        contributed: true,
+        inactive: true,
+      },
+      new Date('2026-02-24T00:00:00.000Z').getTime(),
+    );
+
+    expect(threads.map(thread => thread.threadId)).toEqual(['thread-contributed', 'thread-mine']);
   });
 });

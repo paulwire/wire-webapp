@@ -17,7 +17,7 @@
  *
  */
 
-import {render} from '@testing-library/react';
+import {fireEvent, render} from '@testing-library/react';
 
 import {withTheme} from 'src/script/auth/util/test/TestUtil';
 import {useThreadIndexStore} from 'Components/MessagesList/threading/threadIndexStore';
@@ -34,7 +34,7 @@ describe('ThreadsPanel', () => {
     const {getByText} = render(withTheme(<ThreadsPanel />));
 
     expect(getByText('All threads')).toBeTruthy();
-    expect(getByText('Thread list is coming in the next iteration.')).toBeTruthy();
+    expect(getByText('No threads for the current filters.')).toBeTruthy();
   });
 
   it('renders indexed threads from store', () => {
@@ -50,5 +50,46 @@ describe('ThreadsPanel', () => {
 
     expect(getByText('conversation-a:thread-a')).toBeTruthy();
     expect(getByText(' unread: 2')).toBeTruthy();
+  });
+
+  it('hides inactive threads by default and shows them when inactive filter is selected', () => {
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-inactive',
+      lastReplyAt: '2020-01-01T00:00:00.000Z',
+      unreadCount: 0,
+      replyCount: 1,
+    });
+
+    const {queryByText, getByRole} = render(withTheme(<ThreadsPanel />));
+
+    expect(queryByText('conversation-a:thread-inactive')).toBeNull();
+
+    fireEvent.click(getByRole('button', {name: 'Inactive'}));
+
+    expect(queryByText('conversation-a:thread-inactive')).toBeTruthy();
+  });
+
+  it('calls onOpenThread when clicking a thread row', () => {
+    const onOpenThread = jest.fn();
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-01-02T00:00:00.000Z',
+      unreadCount: 0,
+      replyCount: 1,
+    });
+
+    const {getByRole} = render(withTheme(<ThreadsPanel onOpenThread={onOpenThread} />));
+
+    fireEvent.click(getByRole('button', {name: 'conversation-a:thread-a'}));
+
+    expect(onOpenThread).toHaveBeenCalledTimes(1);
+    expect(onOpenThread).toHaveBeenCalledWith(
+      expect.objectContaining({
+        conversationId: 'conversation-a',
+        threadId: 'thread-a',
+      }),
+    );
   });
 });
