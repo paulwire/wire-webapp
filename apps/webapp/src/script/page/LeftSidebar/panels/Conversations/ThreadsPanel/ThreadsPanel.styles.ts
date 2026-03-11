@@ -126,8 +126,12 @@ export const timestamp: CSSObject = {
 
 export const title: CSSObject = {
   fontWeight: 'var(--font-weight-semibold)',
+  fontSize: 'var(--font-size-medium)',
   color: 'var(--foreground)',
-  lineHeight: 'var(--line-height-sm)',
+  lineHeight: 'var(--line-height-md)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
 };
 
 export const meta: CSSObject = {

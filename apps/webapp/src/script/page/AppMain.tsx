@@ -416,9 +416,11 @@ export const AppMain = ({
       await Promise.all(
         Array.from(aggregatedThreads.values()).map(async thread => {
           let isRootMessageBySelf = false;
+          let rootMessagePreview: string | undefined;
           try {
             const rootEvent = await repositories.event.eventService.loadEvent(thread.conversationId, thread.threadId);
             isRootMessageBySelf = rootEvent?.from === selfUser.id;
+            rootMessagePreview = extractThreadPreview(rootEvent);
           } catch {
             // Keep best-effort hydration when root event cannot be resolved.
           }
@@ -426,6 +428,7 @@ export const AppMain = ({
           threadIndexStore.reconcileHydratedThread({
             conversationId: thread.conversationId,
             threadId: thread.threadId,
+            rootMessagePreview,
             lastReplyAt: thread.lastReplyAt,
             lastReplyMessageId: thread.lastReplyMessageId,
             lastReplyAuthorId: thread.lastReplyAuthorId,
@@ -544,6 +547,11 @@ export const AppMain = ({
         if (rootEvent?.from === selfUser.id) {
           const freshStore = useThreadUnreadRepliesStore.getState();
           const freshThreadIndexStore = useThreadIndexStore.getState();
+          freshThreadIndexStore.upsertThread({
+            conversationId,
+            threadId,
+            rootMessagePreview: extractThreadPreview(rootEvent),
+          });
           freshStore.markThreadRootAuthoredBySelf(conversationId, threadId);
           freshThreadIndexStore.markThreadRootMessageBySelf(conversationId, threadId);
           freshStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);

@@ -525,6 +525,36 @@ describe('threadIndexStore', () => {
     expect(row.badges.isInactive).toBe(true);
   });
 
+  it('uses root message preview as thread row title when available', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.reconcileHydratedThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      rootMessagePreview: '  Root message text  ',
+      lastReplyAt: '2026-01-03T00:00:00.000Z',
+      replyCount: 1,
+      hasReplyBySelf: false,
+      isRootMessageBySelf: false,
+    });
+
+    const [row] = getFilteredThreadRows(
+      useThreadIndexStore.getState(),
+      {
+        allThreads: true,
+        myThreads: false,
+        contributed: false,
+        inactive: true,
+      },
+      {
+        conversationLabelsById: {'conversation-a': 'Project Alpha'},
+      },
+    );
+
+    expect(row.title).toBe('Root message text');
+    expect(row.preview).toBe('No preview available.');
+  });
+
   it('resolves author label with displayName -> handle -> id fallback chain', () => {
     const store = useThreadIndexStore.getState();
 

@@ -23,6 +23,7 @@ import {createJSONStorage, persist} from 'zustand/middleware';
 export type ThreadIndexEntry = {
   conversationId: string;
   threadId: string;
+  rootMessagePreview?: string;
   lastReplyAt: string;
   lastReplyMessageId?: string;
   lastReplyAuthorId?: string;
@@ -54,6 +55,7 @@ type ThreadIndexStore = {
   reconcileHydratedThread: (entry: {
     conversationId: string;
     threadId: string;
+    rootMessagePreview?: string;
     lastReplyAt: string;
     lastReplyMessageId?: string;
     lastReplyAuthorId?: string;
@@ -105,6 +107,10 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
               [key]: {
                 ...current,
                 ...entry,
+                rootMessagePreview:
+                  entry.rootMessagePreview === undefined
+                    ? current.rootMessagePreview
+                    : normalizePreview(entry.rootMessagePreview),
                 lastReplyPreview:
                   entry.lastReplyPreview === undefined ? current.lastReplyPreview : normalizePreview(entry.lastReplyPreview),
                 conversationId,
@@ -195,6 +201,7 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
       reconcileHydratedThread: ({
         conversationId,
         threadId,
+        rootMessagePreview,
         lastReplyAt,
         lastReplyMessageId,
         lastReplyAuthorId,
@@ -216,6 +223,8 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
               ...state.threadsByKey,
               [key]: {
                 ...current,
+                rootMessagePreview:
+                  rootMessagePreview === undefined ? current.rootMessagePreview : normalizePreview(rootMessagePreview),
                 lastReplyAt: shouldUpdateLatestMetadata ? lastReplyAt : current.lastReplyAt,
                 lastReplyMessageId:
                   shouldUpdateLatestMetadata && lastReplyMessageId ? lastReplyMessageId : current.lastReplyMessageId,
@@ -318,10 +327,21 @@ export type ThreadAuthorLabelData = {
 const FALLBACK_TITLE_PREFIX = 'Thread in';
 const FALLBACK_AUTHOR_LABEL = 'Unknown author';
 const FALLBACK_PREVIEW = 'No preview available.';
+const FALLBACK_TITLE_SUFFIX = 'this conversation';
 
 const getThreadPreview = (preview?: string) => {
   const normalizedPreview = preview?.trim();
   return normalizedPreview ? normalizedPreview : FALLBACK_PREVIEW;
+};
+
+const getThreadTitle = (thread: ThreadIndexEntry, conversationLabel: string) => {
+  const rootPreview = normalizePreview(thread.rootMessagePreview);
+  if (rootPreview) {
+    return rootPreview;
+  }
+
+  const safeConversationLabel = getNormalizedLabel(conversationLabel) ?? FALLBACK_TITLE_SUFFIX;
+  return `${FALLBACK_TITLE_PREFIX} ${safeConversationLabel}`;
 };
 
 const getNormalizedLabel = (value?: string) => {
@@ -394,7 +414,7 @@ export const getFilteredThreadRows = (
     return {
       conversationId: thread.conversationId,
       threadId: thread.threadId,
-      title: `${FALLBACK_TITLE_PREFIX} ${conversationLabel}`,
+      title: getThreadTitle(thread, conversationLabel),
       conversationLabel,
       authorLabel: getThreadAuthorLabel(thread, authorLabelsById),
       preview: getThreadPreview(thread.lastReplyPreview),
