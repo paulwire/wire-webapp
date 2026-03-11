@@ -17,7 +17,13 @@
  *
  */
 
-import {getAllThreadsSorted, getFilteredThreadsSorted, isThreadInactive, useThreadIndexStore} from './threadIndexStore';
+import {
+  getAllThreadsSorted,
+  getFilteredThreadRows,
+  getFilteredThreadsSorted,
+  isThreadInactive,
+  useThreadIndexStore,
+} from './threadIndexStore';
 
 describe('threadIndexStore', () => {
   beforeEach(() => {
@@ -372,5 +378,84 @@ describe('threadIndexStore', () => {
 
     const threads = getAllThreadsSorted(useThreadIndexStore.getState());
     expect(threads.map(thread => thread.threadId)).toEqual(['thread-new', 'thread-mid']);
+  });
+
+  it('builds thread row view model with deterministic fallbacks', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-03T00:00:00.000Z',
+      unreadCount: 2,
+      hasUnreadMentionForSelf: true,
+      isRootMessageBySelf: true,
+      hasReplyBySelf: true,
+    });
+
+    const [row] = getFilteredThreadRows(
+      useThreadIndexStore.getState(),
+      {
+        allThreads: true,
+        myThreads: false,
+        contributed: false,
+        inactive: true,
+      },
+      {
+        conversationLabelsById: {'conversation-a': 'Project Alpha'},
+        now: new Date('2026-02-24T00:00:00.000Z').getTime(),
+      },
+    );
+
+    expect(row).toEqual(
+      expect.objectContaining({
+        conversationId: 'conversation-a',
+        threadId: 'thread-a',
+        title: 'Thread in Project Alpha',
+        conversationLabel: 'Project Alpha',
+        authorLabel: 'Unknown author',
+        preview: 'No preview available.',
+        lastActivityAt: '2026-02-03T00:00:00.000Z',
+        badges: expect.objectContaining({
+          unreadCount: 2,
+          hasUnreadMentionForSelf: true,
+          isMyThread: true,
+          isContributed: true,
+          isInactive: false,
+        }),
+      }),
+    );
+  });
+
+  it('builds thread row view model with label fallbacks and trimmed preview', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-01-01T00:00:00.000Z',
+      lastReplyAuthorId: 'user-a',
+      lastReplyPreview: '  hello world  ',
+    });
+
+    const [row] = getFilteredThreadRows(
+      useThreadIndexStore.getState(),
+      {
+        allThreads: true,
+        myThreads: false,
+        contributed: false,
+        inactive: true,
+      },
+      {
+        authorLabelsById: {'user-a': 'Ada Lovelace'},
+        now: new Date('2026-02-24T00:00:00.000Z').getTime(),
+      },
+    );
+
+    expect(row.title).toBe('Thread in conversation-a');
+    expect(row.conversationLabel).toBe('conversation-a');
+    expect(row.authorLabel).toBe('Ada Lovelace');
+    expect(row.preview).toBe('hello world');
+    expect(row.badges.isInactive).toBe(true);
   });
 });

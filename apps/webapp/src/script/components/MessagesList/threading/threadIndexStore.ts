@@ -279,6 +279,41 @@ export type ThreadListFilters = {
   inactive: boolean;
 };
 
+export type ThreadRowViewModel = {
+  conversationId: string;
+  threadId: string;
+  title: string;
+  conversationLabel: string;
+  authorLabel: string;
+  preview: string;
+  lastActivityAt: string;
+  badges: {
+    unreadCount: number;
+    hasUnreadMentionForSelf: boolean;
+    isMyThread: boolean;
+    isContributed: boolean;
+    isInactive: boolean;
+  };
+  thread: ThreadIndexEntry;
+};
+
+const FALLBACK_TITLE_PREFIX = 'Thread in';
+const FALLBACK_AUTHOR_LABEL = 'Unknown author';
+const FALLBACK_PREVIEW = 'No preview available.';
+
+const getThreadPreview = (preview?: string) => {
+  const normalizedPreview = preview?.trim();
+  return normalizedPreview ? normalizedPreview : FALLBACK_PREVIEW;
+};
+
+const getThreadAuthorLabel = (thread: ThreadIndexEntry, authorLabelsById: Record<string, string>) => {
+  if (!thread.lastReplyAuthorId) {
+    return FALLBACK_AUTHOR_LABEL;
+  }
+
+  return authorLabelsById[thread.lastReplyAuthorId] ?? thread.lastReplyAuthorId;
+};
+
 export const getFilteredThreadsSorted = (
   state: ThreadIndexStore,
   filters: ThreadListFilters,
@@ -294,6 +329,42 @@ export const getFilteredThreadsSorted = (
     }
 
     return (filters.myThreads && thread.isRootMessageBySelf) || (filters.contributed && thread.hasReplyBySelf);
+  });
+};
+
+export const getFilteredThreadRows = (
+  state: ThreadIndexStore,
+  filters: ThreadListFilters,
+  {
+    conversationLabelsById = {},
+    authorLabelsById = {},
+    now = Date.now(),
+  }: {
+    conversationLabelsById?: Record<string, string>;
+    authorLabelsById?: Record<string, string>;
+    now?: number;
+  } = {},
+): ThreadRowViewModel[] => {
+  return getFilteredThreadsSorted(state, filters, now).map(thread => {
+    const conversationLabel = conversationLabelsById[thread.conversationId] ?? thread.conversationId;
+
+    return {
+      conversationId: thread.conversationId,
+      threadId: thread.threadId,
+      title: `${FALLBACK_TITLE_PREFIX} ${conversationLabel}`,
+      conversationLabel,
+      authorLabel: getThreadAuthorLabel(thread, authorLabelsById),
+      preview: getThreadPreview(thread.lastReplyPreview),
+      lastActivityAt: thread.lastReplyAt,
+      badges: {
+        unreadCount: thread.unreadCount,
+        hasUnreadMentionForSelf: thread.hasUnreadMentionForSelf,
+        isMyThread: thread.isRootMessageBySelf,
+        isContributed: thread.hasReplyBySelf,
+        isInactive: isThreadInactive(thread, now),
+      },
+      thread,
+    };
   });
 };
 
