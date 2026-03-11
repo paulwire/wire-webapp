@@ -43,6 +43,7 @@ import {Conversation} from 'Repositories/entity/Conversation';
 import {ContentMessage} from 'Repositories/entity/message/ContentMessage';
 import {Message as MessageEntity} from 'Repositories/entity/message/Message';
 import {User} from 'Repositories/entity/User';
+import {ClientEvent} from 'Repositories/event/Client';
 import {EventRepository} from 'Repositories/event/EventRepository';
 import {GiphyRepository} from 'Repositories/extension/GiphyRepository';
 import {PropertiesRepository} from 'Repositories/properties/PropertiesRepository';
@@ -57,11 +58,13 @@ import {getLogger} from 'Util/Logger';
 import {PanelHeader} from '../PanelHeader';
 
 type ThreadBackendEvent = {
+  type?: string;
   conversation?: string;
   data?: {
     thread_id?: string | null;
     thread_root_message_id?: string | null;
     threadId?: string | null;
+    message_id?: string;
   };
   thread_id?: string | null;
   thread_root_message_id?: string | null;
@@ -81,6 +84,8 @@ const getBackendEventThreadId = (event?: ThreadBackendEvent): string | null =>
       event?.data?.thread_root_message_id ??
       null,
   );
+const getReactionTargetMessageId = (event?: ThreadBackendEvent): string | null =>
+  event?.type === ClientEvent.CONVERSATION.REACTION && event.data?.message_id ? event.data.message_id : null;
 
 const mergeThreadReplies = (persistedReplies: ContentMessage[], localReplies: ContentMessage[]) => {
   const mergedById = new Map<string, ContentMessage>();
@@ -200,6 +205,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
     () => groupMessagesBySenderAndTime(threadMessages, Number.MAX_SAFE_INTEGER),
     [threadMessages],
   );
+  const threadMessageIds = useMemo(() => new Set(threadMessages.map(message => message.id)), [threadMessages]);
 
   useEffect(() => {
     void loadThreadReplies();
@@ -248,6 +254,12 @@ export const MessageThread: FC<MessageThreadProps> = ({
 
       if (getBackendEventThreadId(event) === threadId) {
         void loadThreadReplies();
+        return;
+      }
+
+      const reactionTargetMessageId = getReactionTargetMessageId(event);
+      if (reactionTargetMessageId && threadMessageIds.has(reactionTargetMessageId)) {
+        void loadThreadReplies();
       }
     };
 
@@ -258,7 +270,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
       amplify.unsubscribe(THREAD_REPLY_SENT, handleReply);
       amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleEventFromBackend);
     };
-  }, [activeConversation.id, loadThreadReplies, threadId]);
+  }, [activeConversation.id, loadThreadReplies, threadId, threadMessageIds]);
 
   useEffect(() => {
     threadListRef.current?.scrollTo({top: threadListRef.current.scrollHeight});
