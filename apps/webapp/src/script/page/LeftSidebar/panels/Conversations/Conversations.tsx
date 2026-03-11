@@ -285,6 +285,12 @@ export const Conversations = ({
         return;
       }
 
+      try {
+        threadRootMessage = await messageRepository.ensureMessageSender(threadRootMessage);
+      } catch {
+        // Keep opening the thread even if sender hydration fails.
+      }
+
       if (threadRootMessage.user().isMe) {
         useThreadUnreadRepliesStore.getState().markThreadRootAuthoredBySelf(thread.conversationId, thread.threadId);
         useThreadIndexStore.getState().markThreadRootMessageBySelf(thread.conversationId, thread.threadId);
