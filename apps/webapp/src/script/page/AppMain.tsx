@@ -316,6 +316,10 @@ export const AppMain = ({
   }, [locked]);
 
   useEffect(() => {
+    if (!visibleConversations.length) {
+      return;
+    }
+
     const accessibleConversationIds = visibleConversations.map(conversation => conversation.id);
     useThreadIndexStore.getState().pruneToConversationIds(accessibleConversationIds);
   }, [visibleConversations]);
