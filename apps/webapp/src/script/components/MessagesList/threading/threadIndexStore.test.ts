@@ -524,4 +524,46 @@ describe('threadIndexStore', () => {
     expect(row.preview).toBe('hello world');
     expect(row.badges.isInactive).toBe(true);
   });
+
+  it('resolves author label with displayName -> handle -> id fallback chain', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-display-name',
+      lastReplyAt: '2026-01-03T00:00:00.000Z',
+      lastReplyAuthorId: 'user-display',
+    });
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-handle',
+      lastReplyAt: '2026-01-02T00:00:00.000Z',
+      lastReplyAuthorId: 'user-handle',
+    });
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-id',
+      lastReplyAt: '2026-01-01T00:00:00.000Z',
+      lastReplyAuthorId: 'user-id',
+    });
+
+    const rows = getFilteredThreadRows(
+      useThreadIndexStore.getState(),
+      {
+        allThreads: true,
+        myThreads: false,
+        contributed: false,
+        inactive: true,
+      },
+      {
+        authorLabelsById: {
+          'user-display': {displayName: 'Ada Lovelace', handle: '@ada'},
+          'user-handle': {displayName: '   ', handle: '@hopper'},
+          'user-id': {displayName: ' ', handle: ' '},
+        },
+      },
+    );
+
+    expect(rows.map(row => row.authorLabel)).toEqual(['Ada Lovelace', '@hopper', 'user-id']);
+  });
 });

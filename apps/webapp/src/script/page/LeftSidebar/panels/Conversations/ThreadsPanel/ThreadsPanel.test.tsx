@@ -124,7 +124,9 @@ describe('ThreadsPanel', () => {
       lastReplyAuthorId: 'user-a',
     });
 
-    const {getByText} = render(withTheme(<ThreadsPanel authorLabelsById={{'user-a': 'Ada Lovelace'}} />));
+    const {getByText} = render(
+      withTheme(<ThreadsPanel authorLabelsById={{'user-a': {displayName: 'Ada Lovelace', handle: '@ada'}}} />),
+    );
 
     expect(getByText('Last reply by Ada Lovelace')).toBeTruthy();
   });

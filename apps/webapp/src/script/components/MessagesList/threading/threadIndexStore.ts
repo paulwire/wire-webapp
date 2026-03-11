@@ -310,6 +310,11 @@ export type ThreadRowViewModel = {
   thread: ThreadIndexEntry;
 };
 
+export type ThreadAuthorLabelData = {
+  displayName?: string;
+  handle?: string;
+};
+
 const FALLBACK_TITLE_PREFIX = 'Thread in';
 const FALLBACK_AUTHOR_LABEL = 'Unknown author';
 const FALLBACK_PREVIEW = 'No preview available.';
@@ -319,12 +324,37 @@ const getThreadPreview = (preview?: string) => {
   return normalizedPreview ? normalizedPreview : FALLBACK_PREVIEW;
 };
 
-const getThreadAuthorLabel = (thread: ThreadIndexEntry, authorLabelsById: Record<string, string>) => {
+const getNormalizedLabel = (value?: string) => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const normalized = value.trim();
+  return normalized.length > 0 ? normalized : undefined;
+};
+
+const getThreadAuthorLabel = (
+  thread: ThreadIndexEntry,
+  authorLabelsById: Record<string, ThreadAuthorLabelData | string>,
+) => {
   if (!thread.lastReplyAuthorId) {
     return FALLBACK_AUTHOR_LABEL;
   }
 
-  return authorLabelsById[thread.lastReplyAuthorId] ?? thread.lastReplyAuthorId;
+  const authorLabelData = authorLabelsById[thread.lastReplyAuthorId];
+  if (!authorLabelData) {
+    return thread.lastReplyAuthorId;
+  }
+
+  if (typeof authorLabelData === 'string') {
+    return getNormalizedLabel(authorLabelData) ?? thread.lastReplyAuthorId;
+  }
+
+  return (
+    getNormalizedLabel(authorLabelData.displayName) ??
+    getNormalizedLabel(authorLabelData.handle) ??
+    thread.lastReplyAuthorId
+  );
 };
 
 export const getFilteredThreadsSorted = (
@@ -354,7 +384,7 @@ export const getFilteredThreadRows = (
     now = Date.now(),
   }: {
     conversationLabelsById?: Record<string, string>;
-    authorLabelsById?: Record<string, string>;
+    authorLabelsById?: Record<string, ThreadAuthorLabelData | string>;
     now?: number;
   } = {},
 ): ThreadRowViewModel[] => {

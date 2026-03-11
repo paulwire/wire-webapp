@@ -20,6 +20,7 @@
 import {useMemo, useState} from 'react';
 
 import {
+  ThreadAuthorLabelData,
   ThreadIndexEntry,
   getFilteredThreadRows,
   useThreadIndexStore,
@@ -38,7 +39,7 @@ const FILTER_LABELS: Record<ThreadFilterKey, string> = {
 type ThreadsPanelProps = {
   onOpenThread?: (thread: ThreadIndexEntry) => void;
   conversationLabelsById?: Record<string, string>;
-  authorLabelsById?: Record<string, string>;
+  authorLabelsById?: Record<string, ThreadAuthorLabelData | string>;
 };
 
 export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorLabelsById = {}}: ThreadsPanelProps) => {

@@ -161,8 +161,11 @@ export const Conversations = ({
     }, {});
   }, [visibleConversations]);
   const authorLabelsById = useMemo(() => {
-    return users.reduce<Record<string, string>>((labels, user) => {
-      labels[user.id] = user.name();
+    return users.reduce<Record<string, {displayName?: string; handle?: string}>>((labels, user) => {
+      labels[user.id] = {
+        displayName: user.name(),
+        handle: user.handle,
+      };
       return labels;
     }, {});
   }, [users]);
