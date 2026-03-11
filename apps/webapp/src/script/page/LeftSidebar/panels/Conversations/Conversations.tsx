@@ -272,6 +272,7 @@ export const Conversations = ({
         return;
       }
 
+      setCurrentTab(SidebarTabs.THREADS);
       navigate(generateConversationUrl(conversation.qualifiedId));
       amplify.publish(WebAppEvents.CONVERSATION.SHOW, conversation, {});
 
@@ -304,11 +305,11 @@ export const Conversations = ({
         openRightSidebarPanel(PanelState.MESSAGE_THREAD, {entity: threadMessage});
       });
     },
-    [conversationState, messageRepository, openRightSidebarPanel],
+    [conversationState, messageRepository, openRightSidebarPanel, setCurrentTab],
   );
 
   useEffect(() => {
-    amplify.subscribe(WebAppEvents.CONVERSATION.SHOW, (conversation?: Conversation) => {
+    const handleConversationShow = (conversation?: Conversation) => {
       if (!conversation) {
         return;
       }
@@ -322,7 +323,12 @@ export const Conversations = ({
       if (!includesConversation) {
         setCurrentTab(SidebarTabs.RECENT);
       }
-    });
+    };
+
+    amplify.subscribe(WebAppEvents.CONVERSATION.SHOW, handleConversationShow);
+    return () => {
+      amplify.unsubscribe(WebAppEvents.CONVERSATION.SHOW, handleConversationShow);
+    };
   }, [currentTab, currentTabConversations, setCurrentTab]);
 
   useEffect(() => {
