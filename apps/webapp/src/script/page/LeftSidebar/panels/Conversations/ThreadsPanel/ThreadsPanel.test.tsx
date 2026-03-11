@@ -33,7 +33,7 @@ describe('ThreadsPanel', () => {
   it('renders empty state when there are no indexed threads', () => {
     const {getByText} = render(withTheme(<ThreadsPanel />));
 
-    expect(getByText('All threads')).toBeTruthy();
+    expect(getByText('No threads found')).toBeTruthy();
     expect(getByText('No threads for the current filters.')).toBeTruthy();
   });
 
@@ -53,7 +53,7 @@ describe('ThreadsPanel', () => {
     expect(getByText('Last reply by Unknown author')).toBeTruthy();
     expect(getByText('No preview available.')).toBeTruthy();
     expect(getByText('· 3 replies')).toBeTruthy();
-    expect(getByText(' unread: 2')).toBeTruthy();
+    expect(getByText('2 unread')).toBeTruthy();
   });
 
   it('hides inactive threads by default and shows them when inactive filter is selected', () => {
@@ -144,5 +144,20 @@ describe('ThreadsPanel', () => {
     const {getByText} = render(withTheme(<ThreadsPanel />));
 
     expect(getByText('Latest update')).toBeTruthy();
+  });
+
+  it('renders mention badge when thread has unread mention', () => {
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-01-02T00:00:00.000Z',
+      unreadCount: 1,
+      hasUnreadMentionForSelf: true,
+      replyCount: 1,
+    });
+
+    const {getByText} = render(withTheme(<ThreadsPanel />));
+
+    expect(getByText('Mentioned')).toBeTruthy();
   });
 });

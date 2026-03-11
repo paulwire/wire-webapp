@@ -27,6 +27,25 @@ import {
 } from 'Components/MessagesList/threading/threadIndexStore';
 import {formatTimestamp} from 'src/script/util/TimeUtil';
 
+import {
+  activeFiltersText,
+  badge,
+  badges,
+  conversationLabel,
+  emptyState,
+  filterButton,
+  filtersContainer,
+  itemHeader,
+  list,
+  listItem,
+  meta,
+  openButton,
+  panelContainer,
+  preview,
+  timestamp,
+  title,
+} from './ThreadsPanel.styles';
+
 type ThreadFilterKey = 'allThreads' | 'myThreads' | 'contributed' | 'inactive';
 
 const FILTER_LABELS: Record<ThreadFilterKey, string> = {
@@ -93,12 +112,13 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
   };
 
   return (
-    <div data-uie-name="threads-panel">
-      <div data-uie-name="threads-filters">
+    <div css={panelContainer} data-uie-name="threads-panel">
+      <div css={filtersContainer} data-uie-name="threads-filters">
         {(Object.keys(filters) as ThreadFilterKey[]).map(filterKey => (
           <button
             key={filterKey}
             type="button"
+            css={filterButton(filters[filterKey])}
             data-uie-name={`threads-filter-${filterKey}`}
             aria-pressed={filters[filterKey]}
             onClick={() => toggleFilter(filterKey)}
@@ -108,36 +128,61 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
         ))}
       </div>
       {!allThreads.length ? (
-        <div className="left-list-no-conversations" data-uie-name="threads-placeholder-panel">
-          <h2>All threads</h2>
+        <div className="left-list-no-conversations" css={emptyState} data-uie-name="threads-placeholder-panel">
+          <h2>No threads found</h2>
           <p>No threads for the current filters.</p>
         </div>
       ) : (
-        <ul data-uie-name="threads-list">
+        <ul css={list} data-uie-name="threads-list">
           {allThreads.map(thread => (
-            <li key={`${thread.conversationId}:${thread.threadId}`} data-uie-name="threads-list-item">
+            <li css={listItem} key={`${thread.conversationId}:${thread.threadId}`} data-uie-name="threads-list-item">
               <button
+                css={openButton}
                 type="button"
                 data-uie-name="threads-list-open-button"
                 onClick={() => onOpenThread?.(thread.thread)}
               >
-                <span data-uie-name="threads-list-item-title">{thread.title}</span>
-                <span data-uie-name="threads-list-item-conversation-label">
-                  {thread.conversationLabel}
+                <div css={itemHeader} data-uie-name="threads-list-item-header">
+                  <span css={conversationLabel} data-uie-name="threads-list-item-conversation-label">
+                    {thread.conversationLabel}
+                  </span>
+                  <time
+                    css={timestamp}
+                    data-uie-name="threads-list-item-last-activity"
+                    dateTime={thread.lastActivityAt}
+                    title={thread.lastActivityAt}
+                  >
+                    {formatTimestamp(thread.lastActivityAt, false)}
+                  </time>
+                </div>
+                <span css={title} data-uie-name="threads-list-item-title">
+                  {thread.title}
                 </span>
-                <span>{` · ${formatTimestamp(thread.lastActivityAt, false)}`}</span>
               </button>
-              <div data-uie-name="threads-list-item-meta">
+              <div css={meta} data-uie-name="threads-list-item-meta">
                 <span>{`Last reply by ${thread.authorLabel}`}</span>
                 <span>{` · ${thread.thread.replyCount} ${thread.thread.replyCount === 1 ? 'reply' : 'replies'}`}</span>
               </div>
-              <p data-uie-name="threads-list-item-preview">{thread.preview}</p>
-              {thread.badges.unreadCount > 0 && <span>{` unread: ${thread.badges.unreadCount}`}</span>}
+              <p css={preview} data-uie-name="threads-list-item-preview">
+                {thread.preview}
+              </p>
+              <div css={badges} data-uie-name="threads-list-item-badges">
+                {thread.badges.unreadCount > 0 && (
+                  <span css={badge('unread')} data-uie-name="threads-list-item-unread-badge">
+                    {`${thread.badges.unreadCount} unread`}
+                  </span>
+                )}
+                {thread.badges.hasUnreadMentionForSelf && (
+                  <span css={badge('mention')} data-uie-name="threads-list-item-mention-badge">
+                    Mentioned
+                  </span>
+                )}
+              </div>
             </li>
           ))}
         </ul>
       )}
-      <p data-uie-name="threads-active-filters">
+      <p css={activeFiltersText} data-uie-name="threads-active-filters">
         {activeFilters.map(filterKey => FILTER_LABELS[filterKey]).join(', ')}
       </p>
     </div>
