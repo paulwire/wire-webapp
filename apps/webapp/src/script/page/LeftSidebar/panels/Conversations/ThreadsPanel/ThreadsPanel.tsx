@@ -21,7 +21,7 @@ import {useMemo, useState} from 'react';
 
 import {
   ThreadIndexEntry,
-  getFilteredThreadsSorted,
+  getFilteredThreadRows,
   useThreadIndexStore,
 } from 'Components/MessagesList/threading/threadIndexStore';
 import {formatTimestamp} from 'src/script/util/TimeUtil';
@@ -48,7 +48,12 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
     contributed: false,
     inactive: false,
   });
-  const allThreads = useThreadIndexStore(state => getFilteredThreadsSorted(state, filters));
+  const allThreads = useThreadIndexStore(state =>
+    getFilteredThreadRows(state, filters, {
+      conversationLabelsById,
+      authorLabelsById,
+    }),
+  );
 
   const activeFilters = useMemo(
     () => (Object.keys(filters) as ThreadFilterKey[]).filter(filterKey => filters[filterKey]),
@@ -113,22 +118,20 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
               <button
                 type="button"
                 data-uie-name="threads-list-open-button"
-                onClick={() => onOpenThread?.(thread)}
+                onClick={() => onOpenThread?.(thread.thread)}
               >
+                <span data-uie-name="threads-list-item-title">{thread.title}</span>
                 <span data-uie-name="threads-list-item-conversation-label">
-                  {conversationLabelsById[thread.conversationId] ?? thread.conversationId}
+                  {thread.conversationLabel}
                 </span>
-                <span>{` · ${formatTimestamp(thread.lastReplyAt, false)}`}</span>
+                <span>{` · ${formatTimestamp(thread.lastActivityAt, false)}`}</span>
               </button>
               <div data-uie-name="threads-list-item-meta">
-                <span>
-                  {thread.lastReplyAuthorId
-                    ? `Last reply by ${authorLabelsById[thread.lastReplyAuthorId] ?? thread.lastReplyAuthorId}`
-                    : 'Last reply'}
-                </span>
-                <span>{` · ${thread.replyCount} ${thread.replyCount === 1 ? 'reply' : 'replies'}`}</span>
+                <span>{`Last reply by ${thread.authorLabel}`}</span>
+                <span>{` · ${thread.thread.replyCount} ${thread.thread.replyCount === 1 ? 'reply' : 'replies'}`}</span>
               </div>
-              {thread.unreadCount > 0 && <span>{` unread: ${thread.unreadCount}`}</span>}
+              <p data-uie-name="threads-list-item-preview">{thread.preview}</p>
+              {thread.badges.unreadCount > 0 && <span>{` unread: ${thread.badges.unreadCount}`}</span>}
             </li>
           ))}
         </ul>

@@ -48,8 +48,10 @@ describe('ThreadsPanel', () => {
 
     const {getByText} = render(withTheme(<ThreadsPanel />));
 
+    expect(getByText('Thread in conversation-a')).toBeTruthy();
     expect(getByText('conversation-a')).toBeTruthy();
-    expect(getByText('Last reply')).toBeTruthy();
+    expect(getByText('Last reply by Unknown author')).toBeTruthy();
+    expect(getByText('No preview available.')).toBeTruthy();
     expect(getByText('· 3 replies')).toBeTruthy();
     expect(getByText(' unread: 2')).toBeTruthy();
   });
@@ -108,6 +110,7 @@ describe('ThreadsPanel', () => {
       withTheme(<ThreadsPanel conversationLabelsById={{'conversation-a': 'Project Alpha'}} />),
     );
 
+    expect(getByText('Thread in Project Alpha')).toBeTruthy();
     expect(getByText('Project Alpha')).toBeTruthy();
   });
 
@@ -124,5 +127,20 @@ describe('ThreadsPanel', () => {
     const {getByText} = render(withTheme(<ThreadsPanel authorLabelsById={{'user-a': 'Ada Lovelace'}} />));
 
     expect(getByText('Last reply by Ada Lovelace')).toBeTruthy();
+  });
+
+  it('renders thread preview when available', () => {
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-01-02T00:00:00.000Z',
+      unreadCount: 0,
+      replyCount: 1,
+      lastReplyPreview: 'Latest update',
+    });
+
+    const {getByText} = render(withTheme(<ThreadsPanel />));
+
+    expect(getByText('Latest update')).toBeTruthy();
   });
 });
