@@ -33,7 +33,6 @@ describe('ThreadsPanel', () => {
   it('renders empty state when there are no indexed threads', () => {
     const {getByText} = render(withTheme(<ThreadsPanel />));
 
-    expect(getByText('All threads')).toBeTruthy();
     expect(getByText('0 threads shown')).toBeTruthy();
     expect(getByText('No threads found')).toBeTruthy();
     expect(getByText('No threads for the current filters.')).toBeTruthy();
@@ -199,9 +198,7 @@ describe('ThreadsPanel', () => {
       replyCount: 1,
     });
 
-    const {getByPlaceholderText, queryByText} = render(withTheme(<ThreadsPanel />));
-
-    fireEvent.change(getByPlaceholderText('Search root messages'), {target: {value: 'launch'}});
+    const {queryByText} = render(withTheme(<ThreadsPanel rootMessageSearchValue="launch" />));
 
     expect(queryByText('Launch planning notes')).toBeTruthy();
     expect(queryByText('Sprint retrospective')).toBeNull();

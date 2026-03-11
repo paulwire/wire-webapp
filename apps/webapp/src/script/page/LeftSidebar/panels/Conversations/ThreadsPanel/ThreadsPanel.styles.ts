@@ -28,54 +28,6 @@ export const panelContainer: CSSObject = {
   padding: 0,
 };
 
-export const panelTitle: CSSObject = {
-  color: 'var(--main-color)',
-  fontSize: 'var(--font-size-medium)',
-  fontWeight: 'var(--font-weight-semibold)',
-  paddingBlock: '8px',
-  textOverflow: 'ellipsis',
-  overflow: 'hidden',
-  whiteSpace: 'nowrap',
-  flex: 1,
-};
-
-export const panelTitleWrapper: CSSObject = {
-  color: 'var(--foreground)',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  minHeight: 'var(--content-title-bar-height)',
-  width: '100%',
-};
-
-export const searchInputWrapper: CSSObject = {
-  zIndex: 1,
-  position: 'relative',
-  marginBlock: '4px 16px',
-};
-
-export const searchInputStyles: CSSObject = {
-  height: '32px',
-  borderRadius: 8,
-  paddingLeft: 36,
-};
-
-const commonIconStyles: CSSObject = {
-  top: '50%',
-  position: 'absolute',
-  transform: 'translateY(-50%)',
-};
-
-export const searchIconStyles: CSSObject = {
-  ...commonIconStyles,
-  left: 10,
-};
-
-export const closeIconStyles: CSSObject = {
-  ...commonIconStyles,
-  right: 10,
-};
-
 export const filtersContainer: CSSObject = {
   display: 'flex',
   flexWrap: 'wrap',

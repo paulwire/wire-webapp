@@ -23,7 +23,7 @@ import {amplify} from 'amplify';
 import {container} from 'tsyringe';
 import {useShallow} from 'zustand/react/shallow';
 
-import {useMatchMedia} from '@wireapp/react-ui-kit';
+import {CircleCloseIcon, Input, SearchIcon, useMatchMedia} from '@wireapp/react-ui-kit';
 import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {useConversationFocus} from 'Hooks/useConversationFocus';
@@ -52,6 +52,14 @@ import {useChannelsFeatureFlag} from 'Util/useChannelsFeatureFlag';
 
 import {ConversationCallingView} from './ConversationCallingView/ConversationCallingView';
 import {ConversationHeader} from './ConversationHeader';
+import {
+  closeIconStyles as conversationsHeaderCloseIconStyles,
+  header as conversationsHeaderStyles,
+  label as conversationsHeaderLabelStyles,
+  searchIconStyles as conversationsHeaderSearchIconStyles,
+  searchInputStyles as conversationsHeaderSearchInputStyles,
+  searchInputWrapperStyles as conversationsHeaderSearchInputWrapperStyles,
+} from './ConversationHeader/ConversationHeader.styles';
 import {conversationsSpacerStyles} from './Conversations.styles';
 import {ConversationSidebar} from './ConversationSidebar/ConversationSidebar';
 import {ConversationsList} from './ConversationsList';
@@ -116,6 +124,7 @@ export const Conversations = ({
   } = useSidebarStore(useShallow(state => state));
   const {isChannelsEnabled} = useChannelsFeatureFlag();
   const [conversationsFilter, setConversationsFilter] = useState<string>('');
+  const [threadsRootSearchValue, setThreadsRootSearchValue] = useState<string>('');
   const {classifiedDomains, isTeam} = useKoSubscribableChildren(teamState, ['classifiedDomains', 'isTeam']);
   const {connectRequests, users} = useKoSubscribableChildren(userState, ['connectRequests', 'users']);
   const {notifications} = useKoSubscribableChildren(preferenceNotificationRepository, ['notifications']);
@@ -442,18 +451,47 @@ export const Conversations = ({
       <ListWrapper
         id="conversations"
         headerElement={
-          <ConversationHeader
-            currentFolder={currentFolder}
-            currentTab={currentTab}
-            selfUser={selfUser}
-            showSearchInput={(showSearchInput && hasVisibleConversations) || !!conversationsFilter}
-            searchValue={conversationsFilter}
-            setSearchValue={onSearch}
-            searchInputPlaceholder={searchInputPlaceholder}
-            onSearchEnterClick={handleEnterSearchClick}
-            jumpToRecentSearch={jumpToRecentSearch}
-            searchInputRef={searchInputRef}
-          />
+          isThreads ? (
+            <>
+              <div css={conversationsHeaderStyles}>
+                <h2 css={conversationsHeaderLabelStyles} data-uie-name="conversation-list-header-title">
+                  All threads
+                </h2>
+              </div>
+              <Input
+                className="label-1"
+                value={threadsRootSearchValue}
+                onChange={event => setThreadsRootSearchValue(event.currentTarget.value)}
+                startContent={<SearchIcon width={14} height={14} css={conversationsHeaderSearchIconStyles} />}
+                endContent={
+                  threadsRootSearchValue && (
+                    <CircleCloseIcon
+                      className="cursor-pointer"
+                      onClick={() => setThreadsRootSearchValue('')}
+                      css={conversationsHeaderCloseIconStyles}
+                    />
+                  )
+                }
+                inputCSS={conversationsHeaderSearchInputStyles}
+                wrapperCSS={conversationsHeaderSearchInputWrapperStyles}
+                placeholder="Search root messages"
+                data-uie-name="search-threads-root-message"
+              />
+            </>
+          ) : (
+            <ConversationHeader
+              currentFolder={currentFolder}
+              currentTab={currentTab}
+              selfUser={selfUser}
+              showSearchInput={(showSearchInput && hasVisibleConversations) || !!conversationsFilter}
+              searchValue={conversationsFilter}
+              setSearchValue={onSearch}
+              searchInputPlaceholder={searchInputPlaceholder}
+              onSearchEnterClick={handleEnterSearchClick}
+              jumpToRecentSearch={jumpToRecentSearch}
+              searchInputRef={searchInputRef}
+            />
+          )
         }
         conversationListRef={conversationListRef}
         setConversationListRef={setConversationListRef}
@@ -527,6 +565,7 @@ export const Conversations = ({
                 onOpenThread={openIndexedThread}
                 conversationLabelsById={conversationLabelsById}
                 authorLabelsById={authorLabelsById}
+                rootMessageSearchValue={threadsRootSearchValue}
               />
             )}
 
