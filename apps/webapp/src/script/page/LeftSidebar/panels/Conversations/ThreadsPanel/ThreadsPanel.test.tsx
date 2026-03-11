@@ -33,6 +33,7 @@ describe('ThreadsPanel', () => {
   it('renders empty state when there are no indexed threads', () => {
     const {getByText} = render(withTheme(<ThreadsPanel />));
 
+    expect(getByText('0 threads shown')).toBeTruthy();
     expect(getByText('No threads found')).toBeTruthy();
     expect(getByText('No threads for the current filters.')).toBeTruthy();
   });
@@ -71,7 +72,27 @@ describe('ThreadsPanel', () => {
 
     fireEvent.click(getByRole('button', {name: 'Inactive'}));
 
+    expect(queryByText('1 thread shown')).toBeTruthy();
     expect(queryByText('conversation-a')).toBeTruthy();
+  });
+
+  it('allows resetting filters back to default', () => {
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-inactive',
+      lastReplyAt: '2020-01-01T00:00:00.000Z',
+      unreadCount: 0,
+      replyCount: 1,
+    });
+
+    const {getByRole, queryByText} = render(withTheme(<ThreadsPanel />));
+
+    fireEvent.click(getByRole('button', {name: 'Inactive'}));
+    expect(queryByText('Reset filters')).toBeTruthy();
+    expect(queryByText('conversation-a')).toBeTruthy();
+
+    fireEvent.click(getByRole('button', {name: 'Reset filters'}));
+    expect(queryByText('conversation-a')).toBeNull();
   });
 
   it('calls onOpenThread when clicking a thread row', () => {

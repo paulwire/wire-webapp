@@ -42,6 +42,8 @@ import {
   openButton,
   panelContainer,
   preview,
+  resetFiltersButton,
+  summaryText,
   timestamp,
   title,
 } from './ThreadsPanel.styles';
@@ -54,6 +56,12 @@ const FILTER_LABELS: Record<ThreadFilterKey, string> = {
   contributed: 'Contributed',
   inactive: 'Inactive',
 };
+const DEFAULT_FILTERS = {
+  allThreads: true,
+  myThreads: false,
+  contributed: false,
+  inactive: false,
+};
 
 type ThreadsPanelProps = {
   onOpenThread?: (thread: ThreadIndexEntry) => void;
@@ -62,12 +70,7 @@ type ThreadsPanelProps = {
 };
 
 export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorLabelsById = {}}: ThreadsPanelProps) => {
-  const [filters, setFilters] = useState({
-    allThreads: true,
-    myThreads: false,
-    contributed: false,
-    inactive: false,
-  });
+  const [filters, setFilters] = useState(DEFAULT_FILTERS);
   const allThreads = useThreadIndexStore(state =>
     getFilteredThreadRows(state, filters, {
       conversationLabelsById,
@@ -79,6 +82,11 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
     () => (Object.keys(filters) as ThreadFilterKey[]).filter(filterKey => filters[filterKey]),
     [filters],
   );
+  const isDefaultFilters =
+    filters.allThreads === DEFAULT_FILTERS.allThreads &&
+    filters.myThreads === DEFAULT_FILTERS.myThreads &&
+    filters.contributed === DEFAULT_FILTERS.contributed &&
+    filters.inactive === DEFAULT_FILTERS.inactive;
 
   const toggleFilter = (filterKey: ThreadFilterKey) => {
     setFilters(current => {
@@ -126,7 +134,20 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
             {FILTER_LABELS[filterKey]}
           </button>
         ))}
+        {!isDefaultFilters && (
+          <button
+            css={resetFiltersButton}
+            type="button"
+            data-uie-name="threads-filter-reset"
+            onClick={() => setFilters(DEFAULT_FILTERS)}
+          >
+            Reset filters
+          </button>
+        )}
       </div>
+      <p css={summaryText} data-uie-name="threads-visible-count">
+        {`${allThreads.length} ${allThreads.length === 1 ? 'thread' : 'threads'} shown`}
+      </p>
       {!allThreads.length ? (
         <div className="left-list-no-conversations" css={emptyState} data-uie-name="threads-placeholder-panel">
           <h2>No threads found</h2>

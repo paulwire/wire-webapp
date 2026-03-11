@@ -50,6 +50,19 @@ export const filterButton = (isActive: boolean): CSSObject => ({
   },
 });
 
+export const resetFiltersButton: CSSObject = {
+  border: 'none',
+  backgroundColor: 'transparent',
+  color: 'var(--accent-color)',
+  padding: '4px 2px',
+  fontSize: 'var(--font-size-small)',
+  fontWeight: 'var(--font-weight-semibold)',
+  lineHeight: 'var(--line-height-xs)',
+  textDecoration: 'underline',
+  textUnderlineOffset: '2px',
+  cursor: 'pointer',
+};
+
 export const list: CSSObject = {
   margin: 0,
   padding: 0,
@@ -168,4 +181,12 @@ export const activeFiltersText: CSSObject = {
   padding: '0 2px',
   color: 'var(--text-input-placeholder)',
   fontSize: 'var(--font-size-small)',
+};
+
+export const summaryText: CSSObject = {
+  margin: 0,
+  padding: '0 2px',
+  color: 'var(--text-input-label)',
+  fontSize: 'var(--font-size-small)',
+  fontWeight: 'var(--font-weight-semibold)',
 };
