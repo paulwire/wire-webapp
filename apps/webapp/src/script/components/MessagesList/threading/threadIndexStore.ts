@@ -81,6 +81,15 @@ const getDefaultThreadEntry = (conversationId: string, threadId: string): Thread
   seenMessageIds: [],
 });
 
+const normalizePreview = (preview?: string) => {
+  if (typeof preview !== 'string') {
+    return undefined;
+  }
+
+  const normalized = preview.trim();
+  return normalized.length > 0 ? normalized : undefined;
+};
+
 const useThreadIndexStore = create<ThreadIndexStore>()(
   persist(
     set => ({
@@ -96,6 +105,8 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
               [key]: {
                 ...current,
                 ...entry,
+                lastReplyPreview:
+                  entry.lastReplyPreview === undefined ? current.lastReplyPreview : normalizePreview(entry.lastReplyPreview),
                 conversationId,
                 threadId,
               },
@@ -123,6 +134,7 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
           const currentTime = new Date(current.lastReplyAt).getTime();
           const nextTime = new Date(effectiveTime).getTime();
           const shouldUpdateLatestMetadata = nextTime >= currentTime;
+          const normalizedPreview = normalizePreview(preview);
 
           return {
             threadsByKey: {
@@ -135,7 +147,7 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
                 lastReplyAuthorId:
                   shouldUpdateLatestMetadata && authorId ? authorId : current.lastReplyAuthorId,
                 lastReplyPreview:
-                  shouldUpdateLatestMetadata && preview ? preview : current.lastReplyPreview,
+                  shouldUpdateLatestMetadata && normalizedPreview ? normalizedPreview : current.lastReplyPreview,
                 replyCount: current.replyCount + 1,
                 unreadCount: isSelfReply ? current.unreadCount : current.unreadCount + 1,
                 hasUnreadMentionForSelf: current.hasUnreadMentionForSelf || hasSelfMention,
@@ -197,6 +209,7 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
           const currentTime = new Date(current.lastReplyAt).getTime();
           const hydratedTime = new Date(lastReplyAt).getTime();
           const shouldUpdateLatestMetadata = hydratedTime >= currentTime;
+          const normalizedPreview = normalizePreview(lastReplyPreview);
 
           return {
             threadsByKey: {
@@ -209,7 +222,7 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
                 lastReplyAuthorId:
                   shouldUpdateLatestMetadata && lastReplyAuthorId ? lastReplyAuthorId : current.lastReplyAuthorId,
                 lastReplyPreview:
-                  shouldUpdateLatestMetadata && lastReplyPreview ? lastReplyPreview : current.lastReplyPreview,
+                  shouldUpdateLatestMetadata && normalizedPreview ? normalizedPreview : current.lastReplyPreview,
                 replyCount: Math.max(current.replyCount, replyCount),
                 hasReplyBySelf: current.hasReplyBySelf || hasReplyBySelf,
                 isRootMessageBySelf: current.isRootMessageBySelf || isRootMessageBySelf,

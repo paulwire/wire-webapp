@@ -183,6 +183,35 @@ describe('threadIndexStore', () => {
     expect(thread.lastReplyPreview).toBe('new');
   });
 
+  it('normalizes preview text from thread reply events and ignores blank updates', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.recordThreadReplyEvent({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      eventTime: '2026-01-03T00:00:00.000Z',
+      messageId: 'message-new',
+      authorId: 'new-user',
+      preview: '  normalized preview  ',
+      isSelfReply: false,
+      hasSelfMention: false,
+    });
+
+    store.recordThreadReplyEvent({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      eventTime: '2026-01-04T00:00:00.000Z',
+      messageId: 'message-empty',
+      authorId: 'new-user',
+      preview: '   ',
+      isSelfReply: false,
+      hasSelfMention: false,
+    });
+
+    const [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.lastReplyPreview).toBe('normalized preview');
+  });
+
   it('marks thread as read in thread index', () => {
     const store = useThreadIndexStore.getState();
 
@@ -353,6 +382,43 @@ describe('threadIndexStore', () => {
     expect(thread.lastReplyAuthorId).toBe('user-new');
     expect(thread.lastReplyPreview).toBe('preview-new');
     expect(thread.isRootMessageBySelf).toBe(true);
+  });
+
+  it('normalizes hydrated preview text and keeps previous preview when hydrated preview is blank', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-20T00:00:00.000Z',
+      lastReplyPreview: 'Existing preview',
+    });
+
+    store.reconcileHydratedThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-24T00:00:00.000Z',
+      replyCount: 1,
+      hasReplyBySelf: false,
+      isRootMessageBySelf: false,
+      lastReplyPreview: '   ',
+    });
+
+    let [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.lastReplyPreview).toBe('Existing preview');
+
+    store.reconcileHydratedThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-25T00:00:00.000Z',
+      replyCount: 1,
+      hasReplyBySelf: false,
+      isRootMessageBySelf: false,
+      lastReplyPreview: '  Hydrated preview  ',
+    });
+
+    [thread] = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(thread.lastReplyPreview).toBe('Hydrated preview');
   });
 
   it('prunes thread index to most recent entries', () => {
