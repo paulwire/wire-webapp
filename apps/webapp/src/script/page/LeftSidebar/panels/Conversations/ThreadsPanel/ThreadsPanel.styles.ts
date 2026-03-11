@@ -28,6 +28,15 @@ export const panelContainer: CSSObject = {
   padding: '8px',
 };
 
+export const panelTitle: CSSObject = {
+  margin: 0,
+  color: 'var(--foreground)',
+  fontSize: 'var(--font-size-medium)',
+  fontWeight: 'var(--font-weight-semibold)',
+  lineHeight: 'var(--line-height-md)',
+  padding: '0 2px',
+};
+
 export const filtersContainer: CSSObject = {
   display: 'flex',
   flexWrap: 'wrap',

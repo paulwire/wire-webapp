@@ -41,6 +41,7 @@ import {
   meta,
   openButton,
   panelContainer,
+  panelTitle,
   preview,
   resetFiltersButton,
   summaryText,
@@ -121,6 +122,9 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
 
   return (
     <div css={panelContainer} data-uie-name="threads-panel">
+      <h2 css={panelTitle} data-uie-name="threads-list-header-title">
+        All threads
+      </h2>
       <div css={filtersContainer} data-uie-name="threads-filters">
         {(Object.keys(filters) as ThreadFilterKey[]).map(filterKey => (
           <button
