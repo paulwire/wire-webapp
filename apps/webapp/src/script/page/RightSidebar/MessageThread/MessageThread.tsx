@@ -138,7 +138,6 @@ export const MessageThread: FC<MessageThreadProps> = ({
   selfUser,
   actionsViewModel,
 }) => {
-  const rootContentMessage = isContentMessage(rootMessage) ? rootMessage : null;
   const threadId = rootMessage.threadId ?? rootMessage.id;
 
   const [threadReplies, setThreadReplies] = useState<ContentMessage[]>([]);
@@ -151,6 +150,14 @@ export const MessageThread: FC<MessageThreadProps> = ({
   const isMountedRef = useRef(true);
   const pendingWindowFocusHandlersRef = useRef(new Set<() => void>());
   const [isMsgElementsFocusable, setMsgElementsFocusable] = useState(false);
+  const rootContentMessage = useMemo(() => {
+    const rootFromConversation = activeConversation.getMessage(threadId);
+    if (isContentMessage(rootFromConversation)) {
+      return rootFromConversation;
+    }
+
+    return isContentMessage(rootMessage) ? rootMessage : null;
+  }, [activeConversation, rootMessage, threadId, threadReplies.length]);
 
   const loadThreadReplies = useCallback(async () => {
     const requestId = ++latestLoadRequestIdRef.current;
