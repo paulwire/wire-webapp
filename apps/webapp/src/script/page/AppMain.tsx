@@ -274,6 +274,21 @@ export const AppMain = ({
   const normalizeThreadId = (threadId?: string | null) =>
     typeof threadId === 'string' && threadId.length ? threadId : null;
 
+  const extractThreadPreview = (event?: {
+    data?: {
+      content?: string;
+      text?: {content?: string};
+    };
+  }) => {
+    const preview = event?.data?.text?.content ?? event?.data?.content;
+    if (typeof preview !== 'string') {
+      return undefined;
+    }
+
+    const normalizedPreview = preview.trim();
+    return normalizedPreview.length > 0 ? normalizedPreview : undefined;
+  };
+
   const isThreadReplyMessageEvent = (eventType?: string) => {
     if (!eventType) {
       return false;
@@ -322,6 +337,7 @@ export const AppMain = ({
           lastReplyAt: string;
           lastReplyMessageId?: string;
           lastReplyAuthorId?: string;
+          lastReplyPreview?: string;
           replyCount: number;
           hasReplyBySelf: boolean;
           seenMessageIds: Set<string>;
@@ -346,6 +362,10 @@ export const AppMain = ({
               thread_root_message_id?: string | null;
               time?: string;
               type?: string;
+              data?: {
+                content?: string;
+                text?: {content?: string};
+              };
             }>;
 
             events.forEach(event => {
@@ -381,6 +401,7 @@ export const AppMain = ({
                 current.lastReplyAt = eventTime;
                 current.lastReplyMessageId = event.id;
                 current.lastReplyAuthorId = event.from;
+                current.lastReplyPreview = extractThreadPreview(event);
               }
 
               aggregatedThreads.set(key, current);
@@ -408,6 +429,7 @@ export const AppMain = ({
             lastReplyAt: thread.lastReplyAt,
             lastReplyMessageId: thread.lastReplyMessageId,
             lastReplyAuthorId: thread.lastReplyAuthorId,
+            lastReplyPreview: thread.lastReplyPreview,
             replyCount: thread.replyCount,
             hasReplyBySelf: thread.hasReplyBySelf,
             isRootMessageBySelf,
@@ -438,6 +460,7 @@ export const AppMain = ({
       thread_root_message_id?: string | null;
       data?: {
         mentions?: string[];
+        content?: string;
         text?: {mentions?: string[]};
         thread_id?: string | null;
         thread_root_message_id?: string | null;
@@ -486,6 +509,7 @@ export const AppMain = ({
         eventTime: event.time,
         messageId: event.id,
         authorId: event.from,
+        preview: extractThreadPreview(event),
         isSelfReply: event.from === selfUser.id,
         hasSelfMention: isSelfMentionedInThreadReply,
       });
