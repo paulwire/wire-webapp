@@ -36,9 +36,9 @@ export const filtersContainer: CSSObject = {
 };
 
 export const filterButton = (isActive: boolean): CSSObject => ({
-  border: `1px solid ${isActive ? 'var(--accent-color)' : 'var(--border-color)'}`,
-  backgroundColor: isActive ? 'var(--accent-color-50)' : 'transparent',
-  color: isActive ? 'var(--accent-color)' : 'var(--foreground)',
+  border: `1px solid ${isActive ? 'var(--accent-color)' : 'var(--background-fade-16)'}`,
+  backgroundColor: isActive ? 'var(--accent-color-100)' : 'var(--background-fade-8)',
+  color: isActive ? 'var(--accent-color)' : 'var(--text-input-label)',
   borderRadius: '999px',
   padding: '4px 10px',
   fontSize: 'var(--font-size-small)',
@@ -46,7 +46,12 @@ export const filterButton = (isActive: boolean): CSSObject => ({
   lineHeight: 'var(--line-height-xs)',
   transition: 'background-color 160ms ease, border-color 160ms ease, color 160ms ease',
   ':hover': {
-    backgroundColor: isActive ? 'var(--accent-color-50)' : 'var(--background-fade-8)',
+    backgroundColor: isActive ? 'var(--accent-color-100)' : 'var(--background-fade-16)',
+    color: isActive ? 'var(--accent-color)' : 'var(--foreground)',
+  },
+  ':focus-visible': {
+    outline: '2px solid var(--accent-color)',
+    outlineOffset: '2px',
   },
 });
 
