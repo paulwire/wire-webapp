@@ -25,15 +25,13 @@ export const panelContainer: CSSObject = {
   gap: '8px',
   height: '100%',
   minHeight: 0,
-  padding: '8px',
+  padding: 0,
 };
 
 export const panelTitle: CSSObject = {
-  margin: 0,
   color: 'var(--main-color)',
   fontSize: 'var(--font-size-medium)',
   fontWeight: 'var(--font-weight-semibold)',
-  lineHeight: 'var(--line-height-md)',
   paddingBlock: '8px',
   textOverflow: 'ellipsis',
   overflow: 'hidden',
@@ -53,7 +51,7 @@ export const panelTitleWrapper: CSSObject = {
 export const searchInputWrapper: CSSObject = {
   zIndex: 1,
   position: 'relative',
-  marginBlock: '4px 8px',
+  marginBlock: '4px 16px',
 };
 
 export const searchInputStyles: CSSObject = {
@@ -82,7 +80,7 @@ export const filtersContainer: CSSObject = {
   display: 'flex',
   flexWrap: 'wrap',
   gap: '6px',
-  padding: '4px 0 2px',
+  padding: '4px 8px 2px',
 };
 
 export const filterButton = (isActive: boolean): CSSObject => ({
@@ -115,7 +113,7 @@ export const resetFiltersButton: CSSObject = {
 
 export const list: CSSObject = {
   margin: 0,
-  padding: 0,
+  padding: '0 8px',
   listStyle: 'none',
   display: 'flex',
   flexDirection: 'column',
@@ -232,14 +230,14 @@ export const emptyState: CSSObject = {
 
 export const activeFiltersText: CSSObject = {
   margin: 0,
-  padding: '0 2px',
+  padding: '0 10px',
   color: 'var(--text-input-placeholder)',
   fontSize: 'var(--font-size-small)',
 };
 
 export const summaryText: CSSObject = {
   margin: 0,
-  padding: '0 2px',
+  padding: '0 10px',
   color: 'var(--text-input-label)',
   fontSize: 'var(--font-size-small)',
   fontWeight: 'var(--font-weight-semibold)',
