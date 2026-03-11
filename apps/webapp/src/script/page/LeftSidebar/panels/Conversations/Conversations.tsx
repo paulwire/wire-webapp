@@ -269,6 +269,7 @@ export const Conversations = ({
     async (thread: {conversationId: string; threadId: string}) => {
       const conversation = conversationState.findConversation({id: thread.conversationId, domain: ''});
       if (!conversation) {
+        useThreadIndexStore.getState().removeThread(thread.conversationId, thread.threadId);
         return;
       }
 
@@ -281,11 +282,13 @@ export const Conversations = ({
         try {
           threadRootMessage = await messageRepository.getMessageInConversationById(conversation, thread.threadId);
         } catch {
+          useThreadIndexStore.getState().removeThread(thread.conversationId, thread.threadId);
           return;
         }
       }
 
       if (!threadRootMessage) {
+        useThreadIndexStore.getState().removeThread(thread.conversationId, thread.threadId);
         return;
       }
 
