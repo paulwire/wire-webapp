@@ -182,4 +182,29 @@ describe('ThreadsPanel', () => {
 
     expect(getByText('Mentioned')).toBeTruthy();
   });
+
+  it('filters threads by root message content search', () => {
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      rootMessagePreview: 'Launch planning notes',
+      lastReplyAt: '2026-01-02T00:00:00.000Z',
+      replyCount: 1,
+    });
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-b',
+      threadId: 'thread-b',
+      rootMessagePreview: 'Sprint retrospective',
+      lastReplyAt: '2026-01-03T00:00:00.000Z',
+      replyCount: 1,
+    });
+
+    const {getByPlaceholderText, queryByText} = render(withTheme(<ThreadsPanel />));
+
+    fireEvent.change(getByPlaceholderText('Search root messages'), {target: {value: 'launch'}});
+
+    expect(queryByText('Launch planning notes')).toBeTruthy();
+    expect(queryByText('Sprint retrospective')).toBeNull();
+    expect(queryByText('1 thread shown')).toBeTruthy();
+  });
 });

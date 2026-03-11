@@ -19,6 +19,8 @@
 
 import {useMemo, useState} from 'react';
 
+import {CircleCloseIcon, Input, SearchIcon} from '@wireapp/react-ui-kit';
+
 import {
   ThreadAuthorLabelData,
   ThreadIndexEntry,
@@ -31,6 +33,7 @@ import {
   activeFiltersText,
   badge,
   badges,
+  closeIconStyles,
   conversationLabel,
   emptyState,
   filterButton,
@@ -41,9 +44,13 @@ import {
   meta,
   openButton,
   panelContainer,
+  panelTitleWrapper,
   panelTitle,
   preview,
   resetFiltersButton,
+  searchIconStyles,
+  searchInputStyles,
+  searchInputWrapper,
   summaryText,
   timestamp,
   title,
@@ -72,12 +79,24 @@ type ThreadsPanelProps = {
 
 export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorLabelsById = {}}: ThreadsPanelProps) => {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  const [searchValue, setSearchValue] = useState('');
   const allThreads = useThreadIndexStore(state =>
     getFilteredThreadRows(state, filters, {
       conversationLabelsById,
       authorLabelsById,
     }),
   );
+  const visibleThreads = useMemo(() => {
+    const normalizedQuery = searchValue.trim().toLowerCase();
+    if (!normalizedQuery) {
+      return allThreads;
+    }
+
+    return allThreads.filter(thread => {
+      const rootMessagePreview = thread.thread.rootMessagePreview?.toLowerCase();
+      return !!rootMessagePreview && rootMessagePreview.includes(normalizedQuery);
+    });
+  }, [allThreads, searchValue]);
 
   const activeFilters = useMemo(
     () => (Object.keys(filters) as ThreadFilterKey[]).filter(filterKey => filters[filterKey]),
@@ -122,9 +141,26 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
 
   return (
     <div css={panelContainer} data-uie-name="threads-panel">
-      <h2 css={panelTitle} data-uie-name="threads-list-header-title">
-        All threads
-      </h2>
+      <div css={panelTitleWrapper}>
+        <h2 css={panelTitle} data-uie-name="threads-list-header-title">
+          All threads
+        </h2>
+      </div>
+      <Input
+        className="label-1"
+        value={searchValue}
+        onChange={event => setSearchValue(event.currentTarget.value)}
+        startContent={<SearchIcon width={14} height={14} css={searchIconStyles} />}
+        endContent={
+          searchValue && (
+            <CircleCloseIcon className="cursor-pointer" onClick={() => setSearchValue('')} css={closeIconStyles} />
+          )
+        }
+        inputCSS={searchInputStyles}
+        wrapperCSS={searchInputWrapper}
+        placeholder="Search root messages"
+        data-uie-name="search-threads-root-message"
+      />
       <div css={filtersContainer} data-uie-name="threads-filters">
         {(Object.keys(filters) as ThreadFilterKey[]).map(filterKey => (
           <button
@@ -150,16 +186,16 @@ export const ThreadsPanel = ({onOpenThread, conversationLabelsById = {}, authorL
         )}
       </div>
       <p css={summaryText} data-uie-name="threads-visible-count">
-        {`${allThreads.length} ${allThreads.length === 1 ? 'thread' : 'threads'} shown`}
+        {`${visibleThreads.length} ${visibleThreads.length === 1 ? 'thread' : 'threads'} shown`}
       </p>
-      {!allThreads.length ? (
+      {!visibleThreads.length ? (
         <div className="left-list-no-conversations" css={emptyState} data-uie-name="threads-placeholder-panel">
           <h2>No threads found</h2>
           <p>No threads for the current filters.</p>
         </div>
       ) : (
         <ul css={list} data-uie-name="threads-list">
-          {allThreads.map(thread => (
+          {visibleThreads.map(thread => (
             <li css={listItem} key={`${thread.conversationId}:${thread.threadId}`} data-uie-name="threads-list-item">
               <button
                 css={openButton}
