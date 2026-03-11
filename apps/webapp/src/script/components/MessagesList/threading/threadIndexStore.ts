@@ -65,6 +65,7 @@ type ThreadIndexStore = {
     isRootMessageBySelf: boolean;
   }) => void;
   pruneToMostRecent: (maxEntries: number) => void;
+  pruneToConversationIds: (conversationIds: string[]) => void;
   removeThread: (conversationId: string, threadId: string) => void;
   clearThreads: () => void;
 };
@@ -254,6 +255,31 @@ const useThreadIndexStore = create<ThreadIndexStore>()(
             accumulator[getThreadIndexKey(thread.conversationId, thread.threadId)] = thread;
             return accumulator;
           }, {});
+
+          return {threadsByKey: pruned};
+        }),
+      pruneToConversationIds: conversationIds =>
+        set(state => {
+          if (!conversationIds.length) {
+            return {threadsByKey: {}};
+          }
+
+          const validConversationIds = new Set(conversationIds);
+          const pruned = Object.values(state.threadsByKey).reduce<Record<string, ThreadIndexEntry>>(
+            (accumulator, thread) => {
+              if (!validConversationIds.has(thread.conversationId)) {
+                return accumulator;
+              }
+
+              accumulator[getThreadIndexKey(thread.conversationId, thread.threadId)] = thread;
+              return accumulator;
+            },
+            {},
+          );
+
+          if (Object.keys(pruned).length === Object.keys(state.threadsByKey).length) {
+            return state;
+          }
 
           return {threadsByKey: pruned};
         }),

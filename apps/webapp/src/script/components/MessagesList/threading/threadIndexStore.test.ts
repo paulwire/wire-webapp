@@ -446,6 +446,26 @@ describe('threadIndexStore', () => {
     expect(threads.map(thread => thread.threadId)).toEqual(['thread-new', 'thread-mid']);
   });
 
+  it('prunes thread index to allowed conversation ids', () => {
+    const store = useThreadIndexStore.getState();
+
+    store.upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-02-03T00:00:00.000Z',
+    });
+    store.upsertThread({
+      conversationId: 'conversation-b',
+      threadId: 'thread-b',
+      lastReplyAt: '2026-02-02T00:00:00.000Z',
+    });
+
+    store.pruneToConversationIds(['conversation-a']);
+
+    const threads = getAllThreadsSorted(useThreadIndexStore.getState());
+    expect(threads.map(thread => `${thread.conversationId}:${thread.threadId}`)).toEqual(['conversation-a:thread-a']);
+  });
+
   it('builds thread row view model with deterministic fallbacks', () => {
     const store = useThreadIndexStore.getState();
 
