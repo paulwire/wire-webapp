@@ -553,14 +553,18 @@ export const AppMain = ({
 
       try {
         const rootEvent = await repositories.event.eventService.loadEvent(conversationId, threadId);
+        const rootMessagePreview = extractThreadPreview(rootEvent);
+        if (rootMessagePreview) {
+          useThreadIndexStore.getState().upsertThread({
+            conversationId,
+            threadId,
+            rootMessagePreview,
+          });
+        }
+
         if (rootEvent?.from === selfUser.id) {
           const freshStore = useThreadUnreadRepliesStore.getState();
           const freshThreadIndexStore = useThreadIndexStore.getState();
-          freshThreadIndexStore.upsertThread({
-            conversationId,
-            threadId,
-            rootMessagePreview: extractThreadPreview(rootEvent),
-          });
           freshStore.markThreadRootAuthoredBySelf(conversationId, threadId);
           freshThreadIndexStore.markThreadRootMessageBySelf(conversationId, threadId);
           freshStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);
