@@ -17,11 +17,12 @@
  *
  */
 
-import {useEffect, useLayoutEffect, useRef} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
 
 import {CONVERSATION_EVENT} from '@wireapp/api-client/lib/event/';
 import {amplify} from 'amplify';
 import cx from 'classnames';
+import ky from 'ky';
 import {ErrorBoundary} from 'react-error-boundary';
 import {container} from 'tsyringe';
 
@@ -55,6 +56,7 @@ import {useKoSubscribableChildren} from 'Util/ComponentUtil';
 import {AppLock} from './AppLock';
 import {useE2EIFeatureConfigUpdate} from './components/FeatureConfigChange/FeatureConfigChangeHandler/Features/useE2EIFeatureConfigUpdate';
 import {FeatureConfigChangeNotifier} from './components/FeatureConfigChange/FeatureConfigChangeNotifier';
+import {ForceReloadModal} from './components/ForceReloadModal/ForceReloadModal';
 import {WindowTitleUpdater} from './components/WindowTitleUpdater';
 import {LeftSidebar} from './LeftSidebar';
 import {TeamCreationModalContainer} from './LeftSidebar/panels/Conversations/ConversationTabs/TeamCreation/TeamCreationModalContainer';
@@ -70,11 +72,16 @@ import {
   useThreadUnreadRepliesStore,
 } from '../components/MessagesList/threading/threadUnreadRepliesStore';
 import {useThreadIndexStore} from '../components/MessagesList/threading/threadIndexStore';
+import {runClientVersionCheck} from '../application-periodic-checks/runClientVersionCheck';
+import {startApplicationPeriodicChecks} from '../application-periodic-checks/startApplicationPeriodicChecks';
+import {WallClock} from '../clock/wallClock';
+import {StartupFeatureToggleName} from '../featureToggles/startupFeatureToggles';
 import {App} from '../main/app';
 import {initialiseMLSMigrationFlow} from '../mls/MLSMigration';
 import {ClientEvent} from '../repositories/event/Client';
 import {generateConversationUrl} from '../router/routeGenerator';
 import {configureRoutes, navigate} from '../router/Router';
+import {TIME_IN_MILLIS} from '../util/TimeUtil';
 import {MainViewModel} from '../view_model/MainViewModel';
 import {WarningsContainer} from '../view_model/WarningsContainer/WarningsContainer';
 
@@ -84,25 +91,42 @@ export type RightSidebarParams = {
   highlighted?: User[];
 };
 
-interface AppMainProps {
-  app: App;
-  selfUser: User;
-  mainView: MainViewModel;
-  conversationState?: ConversationState;
-  callState?: CallState;
+type AppMainProps = {
+  readonly app: App;
+  readonly isFeatureToggleEnabled: (featureName: StartupFeatureToggleName) => boolean;
+  readonly selfUser: User;
+  readonly mainView: MainViewModel;
+  readonly conversationState?: ConversationState;
+  readonly callState?: CallState;
+  readonly wallClock: WallClock;
   /** will block the user from being able to interact with the application (no notifications and no messages will be shown) */
-  locked: boolean;
-}
+  readonly locked: boolean;
+};
 
 export const AppMain = ({
   app,
+  isFeatureToggleEnabled,
   mainView,
   selfUser,
   conversationState = container.resolve(ConversationState),
   callState = container.resolve(CallState),
+  wallClock,
   locked,
 }: AppMainProps) => {
+  const [doesApplicationNeedForceReload, setDoesApplicationNeedForceReload] = useState(false);
+  const clientVersion = Config.getConfig().VERSION;
+  const runApplicationPeriodicCheck: () => void = useCallback(() => {
+    void runClientVersionCheck({ky, clientVersion, setDoesApplicationNeedForceReload});
+  }, [clientVersion]);
   const apiContext = app.getAPIContext();
+
+  useEffect(() => {
+    return startApplicationPeriodicChecks({
+      wallClock,
+      periodicChecksIntervalDelayInMilliseconds: TIME_IN_MILLIS.MINUTE * 5,
+      runPeriodicCheck: runApplicationPeriodicCheck,
+    });
+  }, [wallClock, runApplicationPeriodicCheck]);
 
   useActiveWindow(window);
 
@@ -594,7 +618,6 @@ export const AppMain = ({
 
   const showLeftSidebar = (isMobileView && isMobileLeftSidebarView) || (!isMobileView && !isLeftSidebarHidden);
   const showMainContent = currentTab === SidebarTabs.CELLS || !isMobileView || isMobileCentralColumnView;
-
   return (
     <StyledApp
       themeId={THEME_ID.DEFAULT}
@@ -604,8 +627,16 @@ export const AppMain = ({
       data-uie-value="is-loaded"
     >
       {!locked && <WindowTitleUpdater />}
-      <RootProvider value={mainView}>
+      <RootProvider
+        value={{
+          mainViewModel: mainView,
+          wallClock,
+          doesApplicationNeedForceReload,
+          isFeatureToggleEnabled,
+        }}
+      >
         <ErrorBoundary FallbackComponent={ErrorFallback}>
+          <ForceReloadModal reloadApplication={app.refresh} />
           {Config.getConfig().FEATURE.ENABLE_DEBUG && <ConfigToolbar />}
           {!locked && (
             <div

@@ -4,6 +4,8 @@
     "composite": true,
     "outDir": "./lib",
     "rootDir": "./src",
+    "composite": true,
+    "tsBuildInfoFile": "./lib/tsconfig.tsbuildinfo",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
