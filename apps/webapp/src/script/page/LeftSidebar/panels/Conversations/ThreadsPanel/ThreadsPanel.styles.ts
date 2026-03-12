@@ -43,9 +43,9 @@ export const filtersContainer: CSSObject = {
 };
 
 export const filterButton = (isActive: boolean): CSSObject => ({
-  border: `1px solid ${isActive ? 'var(--accent-color)' : 'var(--background-fade-16)'}`,
-  backgroundColor: isActive ? 'var(--accent-color-100)' : 'var(--background-fade-8)',
-  color: isActive ? 'var(--accent-color)' : 'var(--text-input-label)',
+  border: 'none',
+  backgroundColor: isActive ? 'var(--list-item-selected-bg)' : 'transparent',
+  color: isActive ? 'var(--app-bg-secondary)' : 'var(--main-color)',
   borderRadius: '999px',
   padding: '4px 10px',
   fontSize: 'var(--font-size-small)',
@@ -53,8 +53,8 @@ export const filterButton = (isActive: boolean): CSSObject => ({
   lineHeight: 'var(--line-height-xs)',
   transition: 'background-color 160ms ease, border-color 160ms ease, color 160ms ease',
   ':hover': {
-    backgroundColor: isActive ? 'var(--accent-color-100)' : 'var(--background-fade-16)',
-    color: isActive ? 'var(--accent-color)' : 'var(--foreground)',
+    backgroundColor: isActive ? 'var(--list-item-selected-bg)' : 'var(--background-fade-8)',
+    color: isActive ? 'var(--app-bg-secondary)' : 'var(--main-color)',
   },
   ':focus-visible': {
     outline: '2px solid var(--accent-color)',
@@ -180,6 +180,7 @@ export const meta: CSSObject = {
   justifyContent: 'space-between',
   gap: '8px',
   flexWrap: 'wrap',
+  paddingLeft: '34px',
 };
 
 export const authorLabel = (accentColor?: string): CSSObject => ({
