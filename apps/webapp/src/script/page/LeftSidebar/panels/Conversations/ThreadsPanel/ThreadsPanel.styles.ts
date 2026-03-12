@@ -14,10 +14,17 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see http://www.gnu.org/licenses/.
- *
  */
 
 import {CSSObject} from '@emotion/react';
+
+const withAccentShade = (accentColor: string | undefined, shade: string) => {
+  if (!accentColor) {
+    return undefined;
+  }
+
+  return accentColor.replace(/-([0-9]{2,3})\)$/, `-${shade})`);
+};
 
 export const panelContainer: CSSObject = {
   display: 'flex',
@@ -74,26 +81,26 @@ export const list: CSSObject = {
   listStyle: 'none',
   display: 'flex',
   flexDirection: 'column',
-  gap: '6px',
+  gap: '8px',
   overflowY: 'auto',
   minHeight: 0,
 };
 
-export const listItem: CSSObject = {
-  border: '1px solid var(--border-color)',
-  borderRadius: '10px',
-  backgroundColor: 'var(--app-bg)',
-  padding: '8px',
+export const listItem = (isUnread: boolean, accentColor?: string): CSSObject => ({
+  border: `1px solid ${isUnread ? withAccentShade(accentColor, '300') ?? 'var(--accent-color-300)' : 'var(--border-color)'}`,
+  borderRadius: '12px',
+  backgroundColor: isUnread ? withAccentShade(accentColor, '50') ?? 'var(--accent-color-50)' : 'var(--app-bg)',
+  padding: '10px',
   display: 'flex',
   flexDirection: 'column',
-  gap: '4px',
-};
+  gap: '6px',
+  boxShadow: isUnread ? `inset 3px 0 0 ${accentColor ?? 'var(--accent-color-500)'}` : 'none',
+});
 
 export const openButton: CSSObject = {
   display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'stretch',
-  gap: '4px',
+  alignItems: 'flex-start',
+  gap: '10px',
   width: '100%',
   border: 'none',
   background: 'none',
@@ -104,8 +111,34 @@ export const openButton: CSSObject = {
   ':focus-visible': {
     outline: '2px solid var(--accent-color)',
     outlineOffset: '2px',
-    borderRadius: '6px',
+    borderRadius: '8px',
   },
+};
+
+export const avatarWrapper: CSSObject = {
+  flex: '0 0 auto',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '24px',
+  height: '24px',
+  marginTop: '1px',
+};
+
+export const avatarPlaceholder: CSSObject = {
+  width: '24px',
+  height: '24px',
+  borderRadius: '50%',
+  backgroundColor: 'var(--background-fade-16)',
+  border: '1px solid var(--border-color)',
+};
+
+export const content: CSSObject = {
+  minWidth: 0,
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '4px',
 };
 
 export const itemHeader: CSSObject = {
@@ -115,37 +148,48 @@ export const itemHeader: CSSObject = {
   gap: '8px',
 };
 
-export const conversationLabel: CSSObject = {
+export const conversationLabel = (accentColor?: string): CSSObject => ({
   fontSize: 'var(--font-size-small)',
-  color: 'var(--text-input-label)',
+  color: accentColor ?? 'var(--text-input-label)',
+  fontWeight: accentColor ? 'var(--font-weight-semibold)' : 'var(--font-weight-regular)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-};
+});
 
 export const timestamp: CSSObject = {
   fontSize: 'var(--font-size-small)',
   color: 'var(--text-input-placeholder)',
   whiteSpace: 'nowrap',
+  flex: '0 0 auto',
 };
 
-export const title: CSSObject = {
-  fontWeight: 'var(--font-weight-semibold)',
+export const title = (isUnread: boolean): CSSObject => ({
+  fontWeight: isUnread ? 'var(--font-weight-bold)' : 'var(--font-weight-semibold)',
   fontSize: 'var(--font-size-medium)',
   color: 'var(--foreground)',
   lineHeight: 'var(--line-height-md)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-};
+});
 
 export const meta: CSSObject = {
   display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '8px',
   flexWrap: 'wrap',
-  gap: '4px',
-  fontSize: 'var(--font-size-small)',
-  color: 'var(--text-input-label)',
 };
+
+export const authorLabel = (accentColor?: string): CSSObject => ({
+  fontSize: 'var(--font-size-small)',
+  color: accentColor ?? 'var(--text-input-label)',
+  fontWeight: 'var(--font-weight-semibold)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+});
 
 export const preview: CSSObject = {
   margin: 0,
@@ -156,6 +200,7 @@ export const preview: CSSObject = {
   WebkitBoxOrient: 'vertical',
   overflow: 'hidden',
   lineHeight: 'var(--line-height-sm)',
+  paddingLeft: '34px',
 };
 
 export const badges: CSSObject = {
@@ -164,7 +209,7 @@ export const badges: CSSObject = {
   gap: '6px',
 };
 
-export const badge = (kind: 'unread' | 'mention'): CSSObject => ({
+export const badge = (kind: 'reply' | 'unread' | 'mention', accentColor?: string): CSSObject => ({
   display: 'inline-flex',
   alignItems: 'center',
   borderRadius: '999px',
@@ -172,9 +217,21 @@ export const badge = (kind: 'unread' | 'mention'): CSSObject => ({
   fontSize: 'var(--font-size-small)',
   fontWeight: 'var(--font-weight-semibold)',
   lineHeight: 'var(--line-height-xs)',
-  border: `1px solid ${kind === 'unread' ? 'var(--accent-color-500)' : 'var(--amber-500)'}`,
-  color: kind === 'unread' ? 'var(--accent-color)' : 'var(--amber-500)',
-  backgroundColor: kind === 'unread' ? 'var(--accent-color-50)' : 'var(--amber-50)',
+  border: `1px solid ${
+    kind === 'mention'
+      ? 'var(--amber-500)'
+      : kind === 'unread'
+        ? accentColor ?? 'var(--accent-color-500)'
+        : 'var(--background-fade-24)'
+  }`,
+  color:
+    kind === 'mention' ? 'var(--amber-500)' : kind === 'unread' ? accentColor ?? 'var(--accent-color)' : 'var(--text-input-label)',
+  backgroundColor:
+    kind === 'mention'
+      ? 'var(--amber-50)'
+      : kind === 'unread'
+        ? withAccentShade(accentColor, '50') ?? 'var(--accent-color-50)'
+        : 'var(--background-fade-8)',
 });
 
 export const emptyState: CSSObject = {

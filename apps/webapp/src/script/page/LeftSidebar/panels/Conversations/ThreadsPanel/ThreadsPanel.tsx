@@ -19,19 +19,28 @@
 
 import {useMemo, useState} from 'react';
 
+import {CONVERSATION_ACCESS} from '@wireapp/api-client/lib/conversation';
+
+import {Avatar, AVATAR_SIZE, ChannelAvatar, GroupAvatar} from 'Components/Avatar';
 import {
   ThreadAuthorLabelData,
   ThreadIndexEntry,
+  ThreadRowViewModel,
   getFilteredThreadRows,
   useThreadIndexStore,
 } from 'Components/MessagesList/threading/threadIndexStore';
+import type {Conversation} from 'Repositories/entity/Conversation';
 import {formatTimestamp} from 'src/script/util/TimeUtil';
 
 import {
   activeFiltersText,
+  authorLabel,
+  avatarPlaceholder,
+  avatarWrapper,
   badge,
   badges,
   conversationLabel,
+  content,
   emptyState,
   filterButton,
   filtersContainer,
@@ -67,13 +76,50 @@ type ThreadsPanelProps = {
   onOpenThread?: (thread: ThreadIndexEntry) => void;
   conversationLabelsById?: Record<string, string>;
   authorLabelsById?: Record<string, ThreadAuthorLabelData | string>;
+  conversationsById?: Record<string, Conversation>;
   rootMessageSearchValue?: string;
+};
+
+const ThreadConversationAvatar = ({conversation}: {conversation?: Conversation}) => {
+  if (!conversation) {
+    return <div css={avatarPlaceholder} aria-hidden="true" />;
+  }
+
+  if (conversation.isChannel()) {
+    return (
+      <ChannelAvatar
+        conversationID={conversation.id}
+        isLocked={!conversation.accessModes?.includes(CONVERSATION_ACCESS.LINK)}
+        size="small"
+      />
+    );
+  }
+
+  if (conversation.isGroup()) {
+    return <GroupAvatar conversationID={conversation.id} size="small" />;
+  }
+
+  const participants = conversation.participating_user_ets();
+  if (participants.length > 0) {
+    return <Avatar participant={participants[0]} avatarSize={AVATAR_SIZE.X_SMALL} hideAvailabilityStatus noBadge />;
+  }
+
+  return <div css={avatarPlaceholder} aria-hidden="true" />;
+};
+
+const getConversationAccentColor = (conversation?: Conversation) => {
+  if (!conversation || conversation.isGroupOrChannel()) {
+    return undefined;
+  }
+
+  return conversation.participating_user_ets()[0]?.accent_color();
 };
 
 export const ThreadsPanel = ({
   onOpenThread,
   conversationLabelsById = {},
   authorLabelsById = {},
+  conversationsById = {},
   rootMessageSearchValue = '',
 }: ThreadsPanelProps) => {
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
@@ -172,52 +218,75 @@ export const ThreadsPanel = ({
         </div>
       ) : (
         <ul css={list} data-uie-name="threads-list">
-          {visibleThreads.map(thread => (
-            <li css={listItem} key={`${thread.conversationId}:${thread.threadId}`} data-uie-name="threads-list-item">
-              <button
-                css={openButton}
-                type="button"
-                data-uie-name="threads-list-open-button"
-                onClick={() => onOpenThread?.(thread.thread)}
+          {visibleThreads.map((thread: ThreadRowViewModel) => {
+            const conversation = conversationsById[thread.conversationId];
+            const conversationAccentColor = getConversationAccentColor(conversation);
+            const isUnread = thread.badges.unreadCount > 0;
+
+            return (
+              <li
+                css={listItem(isUnread, thread.authorAccentColor)}
+                key={`${thread.conversationId}:${thread.threadId}`}
+                data-uie-name="threads-list-item"
               >
-                <div css={itemHeader} data-uie-name="threads-list-item-header">
-                  <span css={conversationLabel} data-uie-name="threads-list-item-conversation-label">
-                    {thread.conversationLabel}
-                  </span>
-                  <time
-                    css={timestamp}
-                    data-uie-name="threads-list-item-last-activity"
-                    dateTime={thread.lastActivityAt}
-                    title={thread.lastActivityAt}
-                  >
-                    {formatTimestamp(thread.lastActivityAt, false)}
-                  </time>
+                <button
+                  css={openButton}
+                  type="button"
+                  data-uie-name="threads-list-open-button"
+                  onClick={() => onOpenThread?.(thread.thread)}
+                >
+                  <div css={avatarWrapper} data-uie-name="threads-list-item-avatar">
+                    <ThreadConversationAvatar conversation={conversation} />
+                  </div>
+                  <div css={content}>
+                    <div css={itemHeader} data-uie-name="threads-list-item-header">
+                      <span
+                        css={conversationLabel(conversationAccentColor)}
+                        data-uie-name="threads-list-item-conversation-label"
+                      >
+                        {thread.conversationLabel}
+                      </span>
+                      <time
+                        css={timestamp}
+                        data-uie-name="threads-list-item-last-activity"
+                        dateTime={thread.lastActivityAt}
+                        title={thread.lastActivityAt}
+                      >
+                        {formatTimestamp(thread.lastActivityAt, false)}
+                      </time>
+                    </div>
+                    <span css={title(isUnread)} data-uie-name="threads-list-item-title">
+                      {thread.title}
+                    </span>
+                  </div>
+                </button>
+                <div css={meta} data-uie-name="threads-list-item-meta">
+                  <span css={authorLabel(thread.authorAccentColor)}>{`Last reply by ${thread.authorLabel}`}</span>
+                  <div css={badges} data-uie-name="threads-list-item-badges">
+                    <span css={badge('reply')} data-uie-name="threads-list-item-replies-badge">
+                      {`${thread.thread.replyCount} ${thread.thread.replyCount === 1 ? 'reply' : 'replies'}`}
+                    </span>
+                    {thread.badges.unreadCount > 0 && (
+                      <span
+                        css={badge('unread', thread.authorAccentColor)}
+                        data-uie-name="threads-list-item-unread-badge"
+                      >
+                        {`${thread.badges.unreadCount} unread`}
+                      </span>
+                    )}
+                    {thread.badges.hasUnreadMentionForSelf && (
+                      <span css={badge('mention')} data-uie-name="threads-list-item-mention-badge">
+                        Mentioned
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <span css={title} data-uie-name="threads-list-item-title">
-                  {thread.title}
-                </span>
-              </button>
-              <div css={meta} data-uie-name="threads-list-item-meta">
-                <span>{`Last reply by ${thread.authorLabel}`}</span>
-                <span>{` · ${thread.thread.replyCount} ${thread.thread.replyCount === 1 ? 'reply' : 'replies'}`}</span>
-              </div>
-              <p css={preview} data-uie-name="threads-list-item-preview">
-                {thread.preview}
-              </p>
-              <div css={badges} data-uie-name="threads-list-item-badges">
-                {thread.badges.unreadCount > 0 && (
-                  <span css={badge('unread')} data-uie-name="threads-list-item-unread-badge">
-                    {`${thread.badges.unreadCount} unread`}
-                  </span>
-                )}
-                {thread.badges.hasUnreadMentionForSelf && (
-                  <span css={badge('mention')} data-uie-name="threads-list-item-mention-badge">
-                    Mentioned
-                  </span>
-                )}
-              </div>
-            </li>
-          ))}
+                <p css={preview} data-uie-name="threads-list-item-preview">
+                  {thread.preview}
+                </p>
+              </li>
+            );
+          })}
         </ul>
       )}
       <p css={activeFiltersText} data-uie-name="threads-active-filters">

@@ -53,7 +53,7 @@ describe('ThreadsPanel', () => {
     expect(getByText('conversation-a')).toBeTruthy();
     expect(getByText('Last reply by Unknown author')).toBeTruthy();
     expect(getByText('No preview available.')).toBeTruthy();
-    expect(getByText('· 3 replies')).toBeTruthy();
+    expect(getByText('3 replies')).toBeTruthy();
     expect(getByText('2 unread')).toBeTruthy();
   });
 
@@ -180,6 +180,25 @@ describe('ThreadsPanel', () => {
     const {getByText} = render(withTheme(<ThreadsPanel />));
 
     expect(getByText('Mentioned')).toBeTruthy();
+  });
+
+  it('renders a conversation avatar slot for thread rows', () => {
+    useThreadIndexStore.getState().upsertThread({
+      conversationId: 'conversation-a',
+      threadId: 'thread-a',
+      lastReplyAt: '2026-01-02T00:00:00.000Z',
+      replyCount: 1,
+    });
+
+    const {getByTestId} = render(
+      withTheme(
+        <div data-testid="threads-wrapper">
+          <ThreadsPanel />
+        </div>,
+      ),
+    );
+
+    expect(getByTestId('threads-wrapper').querySelector('[data-uie-name="threads-list-item-avatar"]')).toBeTruthy();
   });
 
   it('filters threads by root message content search', () => {
