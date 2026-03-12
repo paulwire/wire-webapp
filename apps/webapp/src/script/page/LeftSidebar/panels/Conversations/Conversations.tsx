@@ -81,6 +81,12 @@ import {ListWrapper} from '../ListWrapper';
 import {StartUI} from '../StartUI';
 import {PanelState} from '../../../RightSidebar';
 
+type ThreadAuthorLabelLookup = {
+  displayName?: string;
+  handle?: string;
+  accentColor?: string;
+};
+
 type ConversationsProps = {
   callState?: CallState;
   conversationRepository: ConversationRepository;
@@ -170,14 +176,21 @@ export const Conversations = ({
     }, {});
   }, [visibleConversations]);
   const authorLabelsById = useMemo(() => {
-    return users.reduce<Record<string, {displayName?: string; handle?: string}>>((labels, user) => {
+    return users.reduce<Record<string, ThreadAuthorLabelLookup>>((labels, user) => {
       labels[user.id] = {
         displayName: user.name(),
         handle: user.handle,
+        accentColor: user.accent_color(),
       };
       return labels;
     }, {});
   }, [users]);
+  const conversationsById = useMemo(() => {
+    return visibleConversations.reduce<Record<string, Conversation>>((nextConversationsById, conversation) => {
+      nextConversationsById[conversation.id] = conversation;
+      return nextConversationsById;
+    }, {});
+  }, [visibleConversations]);
 
   const isPreferences = currentTab === SidebarTabs.PREFERENCES;
   const isCells = currentTab === SidebarTabs.CELLS;
@@ -565,6 +578,7 @@ export const Conversations = ({
                 onOpenThread={openIndexedThread}
                 conversationLabelsById={conversationLabelsById}
                 authorLabelsById={authorLabelsById}
+                conversationsById={conversationsById}
                 rootMessageSearchValue={threadsRootSearchValue}
               />
             )}

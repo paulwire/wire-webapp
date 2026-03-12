@@ -333,6 +333,7 @@ export type ThreadRowViewModel = {
   title: string;
   conversationLabel: string;
   authorLabel: string;
+  authorAccentColor?: string;
   preview: string;
   lastActivityAt: string;
   badges: {
@@ -348,6 +349,7 @@ export type ThreadRowViewModel = {
 export type ThreadAuthorLabelData = {
   displayName?: string;
   handle?: string;
+  accentColor?: string;
 };
 
 const FALLBACK_TITLE_PREFIX = 'Thread in';
@@ -403,6 +405,22 @@ const getThreadAuthorLabel = (
   );
 };
 
+const getThreadAuthorAccentColor = (
+  thread: ThreadIndexEntry,
+  authorLabelsById: Record<string, ThreadAuthorLabelData | string>,
+) => {
+  if (!thread.lastReplyAuthorId) {
+    return undefined;
+  }
+
+  const authorLabelData = authorLabelsById[thread.lastReplyAuthorId];
+  if (!authorLabelData || typeof authorLabelData === 'string') {
+    return undefined;
+  }
+
+  return getNormalizedLabel(authorLabelData.accentColor);
+};
+
 export const getFilteredThreadsSorted = (
   state: ThreadIndexStore,
   filters: ThreadListFilters,
@@ -443,6 +461,7 @@ export const getFilteredThreadRows = (
       title: getThreadTitle(thread, conversationLabel),
       conversationLabel,
       authorLabel: getThreadAuthorLabel(thread, authorLabelsById),
+      authorAccentColor: getThreadAuthorAccentColor(thread, authorLabelsById),
       preview: getThreadPreview(thread.lastReplyPreview),
       lastActivityAt: thread.lastReplyAt,
       badges: {
