@@ -57,6 +57,8 @@ const compareEventsByConversation = (eventA: EventRecord, eventB: EventRecord) =
 const compareEventsById = (eventA: EventRecord, eventB: EventRecord) => eventA.id.localeCompare(eventB.id);
 const compareEventsByTime = (eventA: EventRecord, eventB: EventRecord) =>
   eventTimeToDate(eventA.time).getTime() - eventTimeToDate(eventB.time).getTime();
+const normalizeThreadId = (threadId?: string | null): string | null =>
+  typeof threadId === 'string' && threadId.length > 0 ? threadId : null;
 const isThreadReply = (event: Partial<EventRecord>) => !!event.is_thread_reply;
 const hasThreadMetadata = (event: Partial<EventRecord>) =>
   'thread_id' in event || 'thread_root_message_id' in event || 'is_thread_reply' in event;
@@ -64,14 +66,15 @@ const isCompleteEventRecord = (event: Partial<EventRecord>) =>
   'id' in event && 'conversation' in event && 'time' in event && 'type' in event;
 
 const withThreadDefaults = <T extends Partial<EventRecord>>(event: T): T => {
-  const threadId = event.thread_id ?? null;
+  const threadId = normalizeThreadId(event.thread_id);
   const hasThread = !!threadId;
+  const normalizedRootThreadId = normalizeThreadId(event.thread_root_message_id);
 
   return {
     ...event,
     is_thread_reply: event.is_thread_reply ?? hasThread,
     thread_id: threadId,
-    thread_root_message_id: hasThread ? (event.thread_root_message_id ?? threadId) : null,
+    thread_root_message_id: hasThread ? normalizedRootThreadId ?? threadId : null,
   };
 };
 

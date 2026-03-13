@@ -299,7 +299,16 @@ export class MessageRepository {
    * @see https://docs.wire.com/understand/federation/index.html
    */
   private async sendMultipartText(
-    {conversation, message, messageId, attachments, linkPreview, mentions = [], quote, threadId}: MultipartMessagePayload,
+    {
+      conversation,
+      message,
+      messageId,
+      attachments,
+      linkPreview,
+      mentions = [],
+      quote,
+      threadId,
+    }: MultipartMessagePayload,
     options?: {syncTimestamp?: boolean},
   ) {
     const text = this.decorateTextMessage(
@@ -547,6 +556,7 @@ export class MessageRepository {
     url: string,
     tag: string | number | Record<string, string>,
     quoteEntity?: OutgoingQuote,
+    threadId?: string | null,
   ): Promise<void> {
     if (!tag) {
       tag = t('extensionsGiphyRandom');
@@ -554,8 +564,8 @@ export class MessageRepository {
 
     const blob = await loadUrlBlob(url);
     const textMessage = t('extensionsGiphyMessage', {tag: tag as string | number}, {}, true);
-    this.sendText({conversation: conversationEntity, message: textMessage, quote: quoteEntity});
-    return this.uploadImages(conversationEntity, [blob]);
+    this.sendText({conversation: conversationEntity, message: textMessage, quote: quoteEntity, threadId});
+    return this.uploadImages(conversationEntity, [blob], threadId);
   }
 
   /**
@@ -563,8 +573,8 @@ export class MessageRepository {
    *
    * @param conversationEntity Conversation to post the images
    */
-  public uploadImages(conversationEntity: Conversation, images: Blob[]) {
-    this.uploadFiles(conversationEntity, images, true);
+  public uploadImages(conversationEntity: Conversation, images: Blob[], threadId?: string | null) {
+    this.uploadFiles(conversationEntity, images, true, threadId);
   }
 
   /**
@@ -574,9 +584,9 @@ export class MessageRepository {
    * @param files files
    * @param asImage whether or not the file should be treated as an image
    */
-  public uploadFiles(conversationEntity: Conversation, files: Blob[], asImage?: boolean) {
+  public uploadFiles(conversationEntity: Conversation, files: Blob[], asImage?: boolean, threadId?: string | null) {
     if (this.canUploadAssetsToConversation(conversationEntity)) {
-      Array.from(files).forEach(file => this.uploadFile(conversationEntity, file, asImage));
+      Array.from(files).forEach(file => this.uploadFile(conversationEntity, file, asImage, undefined, threadId));
     }
   }
 
@@ -645,7 +655,12 @@ export class MessageRepository {
         error,
       );
       const messageEntity = await this.getMessageInConversationById(conversation, messageId);
-      await this.sendAssetUploadFailed(conversation, messageEntity.id, Asset.NotUploaded.FAILED, messageEntity.threadId);
+      await this.sendAssetUploadFailed(
+        conversation,
+        messageEntity.id,
+        Asset.NotUploaded.FAILED,
+        messageEntity.threadId,
+      );
       return this.updateMessageAsUploadFailed(messageEntity);
     } finally {
       window.removeEventListener('beforeunload', beforeUnload);
@@ -670,7 +685,9 @@ export class MessageRepository {
   ): Promise<EventRecord | void> {
     const resolvedThreadId =
       threadId ??
-      (await this.getMessageInConversationById(conversation, originalId).then(message => message.threadId).catch(() => null));
+      (await this.getMessageInConversationById(conversation, originalId)
+        .then(message => message.threadId)
+        .catch(() => null));
     await this.uploadFile(conversation, file, asImage, originalId, resolvedThreadId);
   }
 

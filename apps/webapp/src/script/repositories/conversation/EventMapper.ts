@@ -228,7 +228,7 @@ export class EventMapper {
     }
 
     originalEntity.id = id;
-    originalEntity.threadId = thread_id ?? null;
+    originalEntity.threadId = thread_id && thread_id.length ? thread_id : null;
 
     if (originalEntity.isContent() || (originalEntity as Message).isPing()) {
       originalEntity.status(event.status ?? StatusType.SENT);
@@ -447,7 +447,7 @@ export class EventMapper {
     messageEntity.fromDomain = qualified_from?.domain;
     messageEntity.fromClientId = from_client_id;
     messageEntity.id = id;
-    messageEntity.threadId = thread_id ?? null;
+    messageEntity.threadId = thread_id && thread_id.length ? thread_id : null;
     messageEntity.primary_key = primary_key;
     messageEntity.timestamp(new Date(time).getTime());
     messageEntity.type = type;

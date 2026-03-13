@@ -450,14 +450,18 @@ export class StorageSchemata {
           [StorageSchemata.OBJECT_STORE.LAST_KEY_MATERIAL_UPDATE_DATES]: '',
         },
         upgrade: (transaction: Transaction) => {
+          const normalizeThreadId = (threadId?: string | null): string | null =>
+            typeof threadId === 'string' && threadId.length > 0 ? threadId : null;
+
           const normalizeThreadData = (event: {
             thread_id?: string | null;
             thread_root_message_id?: string | null;
             is_thread_reply?: boolean;
           }) => {
-            const threadId = event.thread_id ?? null;
+            const threadId = normalizeThreadId(event.thread_id);
+            const normalizedThreadRootMessageId = normalizeThreadId(event.thread_root_message_id);
             event.thread_id = threadId;
-            event.thread_root_message_id = threadId ? event.thread_root_message_id ?? threadId : null;
+            event.thread_root_message_id = threadId ? normalizedThreadRootMessageId ?? threadId : null;
             event.is_thread_reply = !!threadId;
           };
 

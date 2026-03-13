@@ -19,7 +19,9 @@
 
 import {cloneElement, FC, ReactNode, useCallback, useEffect, useRef, useState} from 'react';
 
+import {CONVERSATION_CELLS_STATE} from '@wireapp/api-client/lib/conversation';
 import {amplify} from 'amplify';
+import cx from 'classnames';
 import {CSSTransition, TransitionGroup} from 'react-transition-group';
 import {container} from 'tsyringe';
 
@@ -48,6 +50,7 @@ import {Notifications} from './Notifications';
 import {ParticipantDevices} from './ParticipantDevices';
 import {TimedMessages} from './TimedMessages';
 
+import {Config} from '../../Config';
 import {isReadableMessage} from '../../guards/Message';
 import {isUserEntity, isUserServiceEntity} from '../../guards/Panel';
 import {isServiceEntity} from '../../guards/Service';
@@ -123,6 +126,8 @@ const RightSidebar: FC<RightSidebarProps> = ({
   const {conversationRoleRepository} = conversationRepository;
   const conversationState = container.resolve(ConversationState);
   const {activeConversation} = useKoSubscribableChildren(conversationState, ['activeConversation']);
+  const isCellsEnabled =
+    Config.getConfig().FEATURE.ENABLE_CELLS && activeConversation?.cellsState() !== CONVERSATION_CELLS_STATE.DISABLED;
 
   const [animatePanelToLeft, setAnimatePanelToLeft] = useState<boolean>(true);
 
@@ -197,7 +202,7 @@ const RightSidebar: FC<RightSidebarProps> = ({
     <TransitionGroup
       id="right-column"
       component="aside"
-      className="right-column"
+      className={cx('right-column', {'right-column--message-thread': currentState === PanelState.MESSAGE_THREAD})}
       childFactory={child =>
         cloneElement(child, {
           classNames: animatePanelToLeft ? 'right-to-left' : 'left-to-right',
@@ -332,8 +337,16 @@ const RightSidebar: FC<RightSidebarProps> = ({
               activeConversation={activeConversation}
               rootMessage={messageEntity}
               onClose={closePanel}
+              conversationRepository={repositories.conversation}
+              cellsRepository={repositories.cells}
               messageRepository={repositories.message}
               eventRepository={repositories.event}
+              giphyRepository={repositories.giphy}
+              propertiesRepository={repositories.properties}
+              searchRepository={repositories.search}
+              storageRepository={repositories.storage}
+              teamState={teamState}
+              isCellsEnabled={isCellsEnabled}
               selfUser={selfUser}
               actionsViewModel={actionsViewModel}
             />

@@ -326,6 +326,7 @@ export const AppMain = ({
               id="app"
               className={cx('app', {
                 'app--hide-main-content-on-mobile': currentTab !== SidebarTabs.CELLS,
+                'app--message-thread-panel': currentState === PanelState.MESSAGE_THREAD,
               })}
             >
               {showLeftSidebar && (

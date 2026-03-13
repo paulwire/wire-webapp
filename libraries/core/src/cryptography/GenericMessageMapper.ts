@@ -41,7 +41,9 @@ export class GenericMessageMapper {
   private static readonly logger = LogFactory.getLogger('@wireapp/core/GenericMessageMapper');
 
   private static getThreadId(genericMessage: any): string | null {
-    const threadFrom = (payload: any) => payload?.threadId ?? payload?.thread_id ?? null;
+    const normalizeThreadId = (threadId: unknown) =>
+      typeof threadId === 'string' && threadId.length > 0 ? threadId : null;
+    const threadFrom = (payload: any) => normalizeThreadId(payload?.threadId ?? payload?.thread_id ?? null);
 
     switch (genericMessage.content) {
       case GenericMessageType.TEXT:

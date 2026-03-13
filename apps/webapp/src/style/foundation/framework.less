@@ -96,6 +96,11 @@
     background-color: var(--sidebar-bg);
     transform: scale(1, 1);
 
+    &--message-thread {
+      --right-width: min(380px, 100vw);
+      --panel-width: min(380px, 100vw);
+    }
+
     .center-column__overlay {
       display: block;
     }
@@ -116,6 +121,11 @@
   }
   &--large-offset {
     top: 64px;
+  }
+
+  &--message-thread-panel {
+    --right-width: min(380px, 100vw);
+    --panel-width: min(380px, 100vw);
   }
 
   &--hide-main-content-on-mobile {

@@ -73,6 +73,9 @@ const CONFIG = {
 };
 
 interface InputBarProps {
+  threadId?: string | null;
+  disableRightPanelOffset?: boolean;
+  showPingButton?: boolean;
   readonly conversation: Conversation;
   readonly conversationRepository: ConversationRepository;
   readonly cellsRepository: CellsRepository;
@@ -95,6 +98,9 @@ interface InputBarProps {
 }
 
 export const InputBar = ({
+  threadId,
+  disableRightPanelOffset = false,
+  showPingButton = true,
   conversation,
   conversationRepository,
   cellsRepository,
@@ -222,6 +228,7 @@ export const InputBar = ({
     isSending,
     isSendingDisabled,
   } = useMessageHandling({
+    threadId,
     messageContent,
     conversation,
     conversationRepository,
@@ -252,6 +259,7 @@ export const InputBar = ({
     generateQuote,
     messageRepository,
     conversation,
+    threadId,
     cancelMesssageEditing,
   });
 
@@ -267,7 +275,7 @@ export const InputBar = ({
 
   return (
     <div ref={wrapperRef}>
-      <InputBarContainer>
+      <InputBarContainer disableRightPanelOffset={disableRightPanelOffset}>
         {isTypingIndicatorEnabled && <TypingIndicator conversationId={conversation.id} />}
 
         {classifiedDomains && !isConnectionRequest && (
@@ -326,6 +334,7 @@ export const InputBar = ({
                   {!!files.length && <FilePreviews files={files} conversationQualifiedId={conversation.qualifiedId} />}
                   <InputBarControls
                     conversation={conversation}
+                    showPingButton={showPingButton}
                     isCellsFeatureEnabled={isCellsEnabled}
                     isFileSharingSendingEnabled={isFileSharingSendingEnabled}
                     pingDisabled={ping.isPingDisabled}

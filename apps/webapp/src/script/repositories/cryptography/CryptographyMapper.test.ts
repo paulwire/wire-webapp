@@ -533,6 +533,27 @@ describe('CryptographyMapper', () => {
       });
     });
 
+    it('maps thread metadata from backend event fallback when payload has no thread field', () => {
+      const generic_message = new GenericMessage({
+        [GenericMessageType.TEXT]: new Text({content: 'threaded via event metadata'}),
+        messageId: createUuid(),
+      });
+      const threadedEvent = {
+        ...event,
+        is_thread_reply: true,
+        thread_id: 'root-from-event',
+        thread_root_message_id: 'root-from-event',
+      };
+
+      return mapper.mapGenericMessage(generic_message, threadedEvent as typeof event).then(event_json => {
+        expect(event_json.type).toBe(ClientEvent.CONVERSATION.MESSAGE_ADD);
+        expect(event_json.data.content).toBe('threaded via event metadata');
+        expect(event_json.thread_id).toBe('root-from-event');
+        expect(event_json.thread_root_message_id).toBe('root-from-event');
+        expect(event_json.is_thread_reply).toBe(true);
+      });
+    });
+
     it('rejects with an error if no generic message is provided', done => {
       mapper
         .mapGenericMessage(undefined as any, {id: 'ABC'} as any)
