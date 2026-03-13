@@ -21,6 +21,7 @@ import {ReactNode} from 'react';
 
 import cx from 'classnames';
 
+import {COMPOSER_FOCUS_EVENT, ComposerFocusScope} from 'Components/MessagesList/utils/threadRootHighlightEvents';
 import {useAppMainState} from 'src/script/page/state';
 
 import {IgnoreOutsideClickWrapper} from '../util/clickHandlers';
@@ -28,9 +29,14 @@ import {IgnoreOutsideClickWrapper} from '../util/clickHandlers';
 interface InputBarContainerProps {
   children: ReactNode;
   disableRightPanelOffset?: boolean;
+  focusScope?: ComposerFocusScope;
 }
 
-export const InputBarContainer = ({children, disableRightPanelOffset = false}: InputBarContainerProps) => {
+export const InputBarContainer = ({
+  children,
+  disableRightPanelOffset = false,
+  focusScope = 'main',
+}: InputBarContainerProps) => {
   const {rightSidebar} = useAppMainState.getState();
   const lastItem = rightSidebar.history.length - 1;
   const currentState = rightSidebar.history[lastItem];
@@ -41,6 +47,9 @@ export const InputBarContainer = ({children, disableRightPanelOffset = false}: I
       id={'conversation-input-bar'}
       className={cx('conversation-input-bar', {'is-right-panel-open': isRightSidebarOpen})}
       aria-live="assertive"
+      onFocusCapture={() => {
+        window.dispatchEvent(new CustomEvent(COMPOSER_FOCUS_EVENT, {detail: {scope: focusScope}}));
+      }}
     >
       {children}
     </IgnoreOutsideClickWrapper>

@@ -24,6 +24,7 @@ import cx from 'classnames';
 import ky from 'ky';
 import {ErrorBoundary} from 'react-error-boundary';
 import {container} from 'tsyringe';
+import {CONVERSATION_EVENT} from '@wireapp/api-client/lib/event/';
 
 import {QUERY, StyledApp, THEME_ID, useMatchMedia} from '@wireapp/react-ui-kit';
 import {WebAppEvents} from '@wireapp/webapp-events';
@@ -75,6 +76,11 @@ import {configureRoutes, navigate} from '../router/Router';
 import {TIME_IN_MILLIS} from '../util/TimeUtil';
 import {MainViewModel} from '../view_model/MainViewModel';
 import {WarningsContainer} from '../view_model/WarningsContainer/WarningsContainer';
+import {ClientEvent} from '../repositories/event/Client';
+import {
+  isThreadTrackedForSelf,
+  useThreadUnreadRepliesStore,
+} from '../components/MessagesList/threading/threadUnreadRepliesStore';
 
 export type RightSidebarParams = {
   entity: PanelEntity | null;
@@ -298,6 +304,89 @@ export const AppMain = ({
   }, [locked]);
 
   useE2EIFeatureConfigUpdate(repositories.team);
+
+  useEffect(() => {
+    const pendingEligibilityChecks = new Set<string>();
+    const normalizeThreadId = (threadId?: string | null) => (typeof threadId === 'string' && threadId.length ? threadId : null);
+
+    const isThreadReplyMessageEvent = (eventType?: string) => {
+      if (!eventType) {
+        return false;
+      }
+
+      return (
+        eventType === ClientEvent.CONVERSATION.MESSAGE_ADD ||
+        eventType === ClientEvent.CONVERSATION.MULTIPART_MESSAGE_ADD ||
+        eventType === CONVERSATION_EVENT.OTR_MESSAGE_ADD ||
+        eventType === CONVERSATION_EVENT.MLS_MESSAGE_ADD
+      );
+    };
+
+    const handleBackendEvent = async (event?: {
+      type?: string;
+      conversation?: string;
+      from?: string;
+      id?: string;
+      is_thread_reply?: boolean;
+      thread_id?: string | null;
+      thread_root_message_id?: string | null;
+      data?: {thread_id?: string | null; thread_root_message_id?: string | null};
+    }) => {
+      const conversationId = event?.conversation;
+      const threadId = normalizeThreadId(
+        event?.thread_id ?? event?.thread_root_message_id ?? event?.data?.thread_id ?? event?.data?.thread_root_message_id,
+      );
+
+      if (!conversationId || !threadId || !event?.is_thread_reply || !isThreadReplyMessageEvent(event.type)) {
+        return;
+      }
+
+      const threadStore = useThreadUnreadRepliesStore.getState();
+      const threadKey = `${conversationId}:${threadId}`;
+
+      if (event.from === selfUser.id) {
+        threadStore.markThreadRepliedBySelf(conversationId, threadId);
+        return;
+      }
+
+      if (isThreadTrackedForSelf(conversationId, threadId, threadStore)) {
+        threadStore.incrementUnreadForThread(conversationId, threadId);
+        return;
+      }
+
+      if (pendingEligibilityChecks.has(threadKey)) {
+        return;
+      }
+
+      pendingEligibilityChecks.add(threadKey);
+
+      try {
+        const rootEvent = await repositories.event.eventService.loadEvent(conversationId, threadId);
+        if (rootEvent?.from === selfUser.id) {
+          const freshStore = useThreadUnreadRepliesStore.getState();
+          freshStore.markThreadRootAuthoredBySelf(conversationId, threadId);
+          freshStore.incrementUnreadForThread(conversationId, threadId);
+          return;
+        }
+
+        const threadEvents = await repositories.event.eventService.loadThreadEvents(conversationId, threadId);
+        const hasReplyFromSelf = threadEvents.some(threadEvent => threadEvent.id !== threadId && threadEvent.from === selfUser.id);
+
+        if (hasReplyFromSelf) {
+          const freshStore = useThreadUnreadRepliesStore.getState();
+          freshStore.markThreadRepliedBySelf(conversationId, threadId);
+          freshStore.incrementUnreadForThread(conversationId, threadId);
+        }
+      } finally {
+        pendingEligibilityChecks.delete(threadKey);
+      }
+    };
+
+    amplify.subscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
+    return () => {
+      amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
+    };
+  }, [repositories.event.eventService, selfUser.id]);
 
   const showLeftSidebar = (isMobileView && isMobileLeftSidebarView) || (!isMobileView && !isLeftSidebarHidden);
   const showMainContent = currentTab === SidebarTabs.CELLS || !isMobileView || isMobileCentralColumnView;

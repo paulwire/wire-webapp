@@ -46,6 +46,7 @@ import {Message, MessageActions} from './Message';
 import {MarkerComponent} from './Message/Marker';
 import {ScrollToElement} from './Message/types';
 import {UploadAssets} from './UploadAssets';
+import {useActiveThreadRootHighlightId} from './utils/useActiveThreadRootHighlightId';
 import {groupMessagesBySenderAndTime, isMarker} from './utils/messagesGroup';
 import {updateScroll, FocusedElement} from './utils/scrollUpdater';
 
@@ -130,6 +131,7 @@ export const MessagesList: FC<MessagesListParams> = ({
   const filteredMessagesLength = filteredMessages.length;
 
   const groupedMessages = groupMessagesBySenderAndTime(filteredMessages, conversationLastReadTimestamp.current);
+  const activeThreadRootMessageId = useActiveThreadRootHighlightId();
 
   const [messagesContainer, setMessagesContainer] = useState<HTMLDivElement | null>(null);
 
@@ -312,10 +314,14 @@ export const MessagesList: FC<MessagesListParams> = ({
 
               const isHighlighted = !!highlightedMessage && highlightedMessage === message.id;
               const isFocused = !!focusedId && focusedId === message.id;
+              const isThreadRootHighlighted = activeThreadRootMessageId === message.id;
 
               return (
                 <Message
                   key={key}
+                  className={cx({
+                    'message-thread-root-highlight': isThreadRootHighlighted,
+                  })}
                   onVisible={visibleCallback}
                   onVisibilityLost={lastMessageInvisibleCallback}
                   message={message}

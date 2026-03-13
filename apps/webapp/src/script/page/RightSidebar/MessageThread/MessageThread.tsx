@@ -18,19 +18,22 @@
  */
 
 import {FC, useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {createPortal} from 'react-dom';
 
 import {amplify} from 'amplify';
+import {createPortal} from 'react-dom';
 
 import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {FadingScrollbar} from 'Components/FadingScrollbar';
 import {Giphy} from 'Components/Giphy';
+import * as Icon from 'Components/Icon';
 import {InputBar} from 'Components/InputBar';
 import {Message as MessageComponent} from 'Components/MessagesList/Message';
 import {MarkerComponent} from 'Components/MessagesList/Message/Marker';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
+import {useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/messagesGroup';
+import {THREAD_PANEL_INTERACTION_EVENT} from 'Components/MessagesList/utils/threadRootHighlightEvents';
 import {CellsRepository} from 'Repositories/cells/CellsRepository';
 import {ConversationRepository} from 'Repositories/conversation/ConversationRepository';
 import {EventMapper} from 'Repositories/conversation/EventMapper';
@@ -118,11 +121,13 @@ export const MessageThread: FC<MessageThreadProps> = ({
 
   const [threadReplies, setThreadReplies] = useState<ContentMessage[]>([]);
   const [isGiphyModalOpen, setIsGiphyModalOpen] = useState(false);
+  const [isFocusModeOpen, setIsFocusModeOpen] = useState(false);
   const [giphyQuery, setGiphyQuery] = useState('');
   const threadListRef = useRef<HTMLDivElement | null>(null);
   const eventMapperRef = useRef(new EventMapper());
   const latestLoadRequestIdRef = useRef(0);
   const isMountedRef = useRef(true);
+  const pendingWindowFocusHandlersRef = useRef(new Set<() => void>());
   const [isMsgElementsFocusable, setMsgElementsFocusable] = useState(false);
 
   const loadThreadReplies = useCallback(async () => {
@@ -180,11 +185,30 @@ export const MessageThread: FC<MessageThreadProps> = ({
   }, [loadThreadReplies]);
 
   useEffect(() => {
+    if (threadReplies.length === 0) {
+      return;
+    }
+
+    const rafId = window.requestAnimationFrame(() => {
+      useThreadUnreadRepliesStore.getState().markThreadAsRead(activeConversation.id, threadId);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(rafId);
+    };
+  }, [activeConversation.id, groupedThreadMessages.length, threadId, threadReplies.length]);
+
+  useEffect(() => {
     isMountedRef.current = true;
 
     return () => {
       isMountedRef.current = false;
       latestLoadRequestIdRef.current += 1;
+
+      pendingWindowFocusHandlersRef.current.forEach(handler => {
+        window.removeEventListener('focus', handler);
+      });
+      pendingWindowFocusHandlersRef.current.clear();
     };
   }, []);
 
@@ -262,32 +286,95 @@ export const MessageThread: FC<MessageThreadProps> = ({
       }
 
       return () => {
-        const trigger = () => conversationRepository.checkMessageTimer(message as ContentMessage);
+        const trigger = () => {
+          pendingWindowFocusHandlersRef.current.delete(trigger);
+
+          if (isMountedRef.current) {
+            conversationRepository.checkMessageTimer(message as ContentMessage);
+          }
+        };
 
         if (document.hasFocus()) {
           trigger();
           return;
         }
 
+        pendingWindowFocusHandlersRef.current.add(trigger);
         window.addEventListener('focus', trigger, {once: true});
       };
     },
     [conversationRepository],
   );
+  const markThreadPanelInteraction = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(THREAD_PANEL_INTERACTION_EVENT));
+  }, []);
+  const openFocusMode = useCallback(() => {
+    setIsFocusModeOpen(true);
+  }, []);
+  const closeFocusMode = useCallback(() => {
+    setIsFocusModeOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (!isFocusModeOpen) {
+      return;
+    }
+
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeFocusMode();
+      }
+    };
+
+    window.addEventListener('keydown', onEscape);
+    return () => {
+      window.removeEventListener('keydown', onEscape);
+    };
+  }, [closeFocusMode, isFocusModeOpen]);
+
+  useEffect(() => {
+    if (!isFocusModeOpen) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isFocusModeOpen]);
 
   if (!rootContentMessage) {
     return null;
   }
 
-  return (
-    <div id="message-thread" className="panel__page panel__message-thread">
+  const threadContent = (
+    <div
+      id={isFocusModeOpen ? 'message-thread-focus-mode' : 'message-thread'}
+      className={`panel__page panel__message-thread ${isFocusModeOpen ? 'panel__message-thread--focus-mode' : ''}`}
+      onFocusCapture={markThreadPanelInteraction}
+      onMouseDownCapture={markThreadPanelInteraction}
+    >
       <PanelHeader
-        onClose={onClose}
+        onClose={isFocusModeOpen ? closeFocusMode : onClose}
         showBackArrow={false}
         title={`Thread - ${repliesTitle}`}
         titleDataUieName="message-thread-title"
         shouldFocusFirstButton={false}
       />
+      {!isFocusModeOpen && (
+        <button
+          type="button"
+          className="icon-button message-thread-focus-toggle"
+          data-uie-name="do-open-thread-focus-mode"
+          title="Focus thread"
+          aria-label="Focus thread"
+          onClick={openFocusMode}
+        >
+          <Icon.FullscreenIcon />
+        </button>
+      )}
 
       <FadingScrollbar ref={threadListRef} className="message-list panel__content" style={{flexGrow: 1}}>
         <div className="messages" data-uie-name="message-thread-messages">
@@ -299,6 +386,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
             return group.messages.map(message => (
               <MessageComponent
                 key={`${message.id}-${message.timestamp()}`}
+                className={message.id === rootContentMessage.id ? 'message-thread-root-highlight' : undefined}
                 message={message}
                 hideHeader={message.timestamp() !== group.firstMessageTimestamp}
                 messageActions={actionsViewModel}
@@ -340,6 +428,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
           threadId={threadId}
           disableRightPanelOffset
           showPingButton={false}
+          focusScope="thread"
           conversation={activeConversation}
           conversationRepository={conversationRepository}
           cellsRepository={cellsRepository}
@@ -363,7 +452,23 @@ export const MessageThread: FC<MessageThreadProps> = ({
       </div>
       {isGiphyModalOpen &&
         giphyQuery &&
-        createPortal(<Giphy giphyRepository={giphyRepository} inputValue={giphyQuery} onClose={closeGiphy} />, document.body)}
+        createPortal(
+          <Giphy giphyRepository={giphyRepository} inputValue={giphyQuery} onClose={closeGiphy} />,
+          document.body,
+        )}
     </div>
   );
+
+  if (isFocusModeOpen) {
+    return createPortal(
+      <div className="message-thread-focus-overlay" data-uie-name="message-thread-focus-overlay">
+        <div className="message-thread-focus-modal" role="dialog" aria-modal="true" aria-label="Thread focus mode">
+          {threadContent}
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  return threadContent;
 };

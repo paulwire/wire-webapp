@@ -1,6 +1,6 @@
 /*
  * Wire
- * Copyright (C) 2018 Wire Swiss GmbH
+ * Copyright (C) 2026 Wire Swiss GmbH
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,16 +17,8 @@
  *
  */
 
-export enum ConversationStatusIcon {
-  ACTIVE_CALL = 'active-call',
-  MISSED_CALL = 'missed-call',
-  MUTED = 'muted',
-  NONE = 'none',
-  PENDING_CONNECTION = 'pending',
-  TYPING = 'typing',
-  UNREAD_MENTION = 'mention',
-  UNREAD_MESSAGES = 'messages',
-  UNREAD_PING = 'ping',
-  UNREAD_REPLY = 'reply',
-  UNREAD_THREAD = 'thread',
-}
+export const THREAD_PANEL_INTERACTION_EVENT = 'wire:thread-panel-interaction';
+export const COMPOSER_FOCUS_EVENT = 'wire:composer-focus';
+
+export type ComposerFocusScope = 'main' | 'thread';
+

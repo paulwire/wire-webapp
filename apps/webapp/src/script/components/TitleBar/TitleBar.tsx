@@ -155,6 +155,10 @@ export const TitleBar = ({
   const smBreakpoint = useMatchMedia(QUERY.tabletSMDown);
 
   const {close: closeRightSidebar} = useAppMainState(state => state.rightSidebar);
+  const activeRightSidebarPanel = useAppMainState(state => {
+    const {history} = state.rightSidebar;
+    return history[history.length - 1];
+  });
 
   const {setCurrentView: setView} = useAppMainState(state => state.responsiveView);
 
@@ -244,6 +248,8 @@ export const TitleBar = ({
   }, [activeCalls.length]);
 
   const {showStartedCallAlert} = useCallAlertState();
+  const isThreadPanelOpen = activeRightSidebarPanel === PanelState.MESSAGE_THREAD;
+  const isInfoPanelActive = isRightSidebarOpen && !isThreadPanelOpen;
 
   return (
     <ul
@@ -361,16 +367,29 @@ export const TitleBar = ({
             )}
           </>
         ) : (
-          <button
-            type="button"
-            title={t('tooltipConversationInfo')}
-            aria-label={t('tooltipConversationInfo')}
-            onClick={onClickDetails}
-            className={cx('conversation-title-bar-icon', {active: isRightSidebarOpen})}
-            data-uie-name="do-open-info"
-          >
-            <Icon.InfoIcon />
-          </button>
+          <>
+            {isThreadPanelOpen && (
+              <span
+                title="Thread active"
+                aria-label="Thread active"
+                role="status"
+                className={cx('conversation-title-bar-icon', {active: isThreadPanelOpen})}
+                data-uie-name="status-open-thread"
+              >
+                <Icon.MessageIcon />
+              </span>
+            )}
+            <button
+              type="button"
+              title={t('tooltipConversationInfo')}
+              aria-label={t('tooltipConversationInfo')}
+              onClick={onClickDetails}
+              className={cx('conversation-title-bar-icon', {active: isInfoPanelActive})}
+              data-uie-name="do-open-info"
+            >
+              <Icon.InfoIcon />
+            </button>
+          </>
         )}
       </li>
 

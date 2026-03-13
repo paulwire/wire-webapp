@@ -30,6 +30,7 @@ import {verticallyCenterMessage} from 'Components/MessagesList/utils/helpers';
 import {filterMessages} from 'Components/MessagesList/utils/messagesFilter';
 import {useLoadConversation} from 'Components/MessagesList/utils/useLoadConversation';
 import {useScrollToLastUnreadMessage} from 'Components/MessagesList/utils/useScrollToLastUnreadMessage';
+import {useActiveThreadRootHighlightId} from 'Components/MessagesList/utils/useActiveThreadRootHighlightId';
 import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/virtualizedMessagesGroup';
 import {useLoadMessages} from 'Components/MessagesList/VirtualizedMessagesList/useLoadMessages';
 import {useScrollMessages} from 'Components/MessagesList/VirtualizedMessagesList/useScrollMessages';
@@ -101,6 +102,7 @@ export const VirtualizedMessagesList = ({
   const groupedMessages = useMemo(() => {
     return groupMessagesBySenderAndTime(filteredMessages, conversationLastReadTimestamp.current);
   }, [conversationLastReadTimestamp, filteredMessages]);
+  const activeThreadRootMessageId = useActiveThreadRootHighlightId();
 
   const [highlightedMessage, setHighlightedMessage] = useState<string | undefined>(conversation.initialMessage()?.id);
 
@@ -307,6 +309,9 @@ export const VirtualizedMessagesList = ({
                 <MarkerComponent marker={item} measureElement={virtualizer.measureElement} index={virtualItem.index} />
               ) : (
                 <Message
+                  className={cx({
+                    'message-thread-root-highlight': activeThreadRootMessageId === item.message.id,
+                  })}
                   measureElement={virtualizer.measureElement}
                   index={virtualItem.index}
                   message={item.message}

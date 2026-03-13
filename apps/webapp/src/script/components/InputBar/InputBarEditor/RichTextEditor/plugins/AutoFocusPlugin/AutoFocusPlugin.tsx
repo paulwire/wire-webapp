@@ -32,11 +32,16 @@ import {
   isTabKey,
 } from 'Util/KeyboardUtil';
 
-const hasInputAlreadyFocused = () => {
-  return document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName);
+export const hasInputAlreadyFocused = () => {
+  const activeElement = document.activeElement as HTMLElement | null;
+  if (!activeElement) {
+    return false;
+  }
+
+  return ['INPUT', 'TEXTAREA'].includes(activeElement.tagName) || activeElement.isContentEditable;
 };
 
-const useTextAreaFocus = (callback: () => void) => {
+export const useTextAreaFocus = (callback: () => void) => {
   const handleFocusTextarea = (event: KeyboardEvent) => {
     const detailViewModal = document.querySelector('#detail-view');
 

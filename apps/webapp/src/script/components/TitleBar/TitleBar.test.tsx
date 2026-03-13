@@ -35,6 +35,7 @@ import {User} from 'Repositories/entity/User';
 import {TeamState} from 'Repositories/team/TeamState';
 import {withTheme} from 'src/script/auth/util/test/TestUtil';
 import {ContentState} from 'src/script/page/useAppState';
+import {useAppMainState} from 'src/script/page/state';
 
 import {TestFactory} from '../../../../test/helper/TestFactory';
 import {PanelState} from '../../page/RightSidebar/RightSidebar';
@@ -89,6 +90,10 @@ const getDefaultProps = (callingRepository: CallingRepository, conversation: Con
 });
 
 describe('TitleBar', () => {
+  beforeEach(() => {
+    useAppMainState.getState().rightSidebar.close();
+  });
+
   it('subscribes to shortcut PEOPLE and add ADD_PEOPLE events on mount', async () => {
     spyOn(amplify, 'subscribe').and.returnValue(undefined);
     const conversation = new Conversation();
@@ -157,6 +162,23 @@ describe('TitleBar', () => {
 
     fireEvent.click(infoButton);
     expect(props.openRightSidebar).toHaveBeenCalledWith(PanelState.CONVERSATION_DETAILS, {entity: conversation});
+  });
+
+  it('shows active thread icon and non-active info icon when thread panel is open', async () => {
+    mockedUiKit.useMatchMedia.mockReturnValue(false);
+    const conversation = createConversationEntity();
+    const props = getDefaultProps(callingRepository, conversation);
+
+    useAppMainState.getState().rightSidebar.goTo(PanelState.MESSAGE_THREAD, {entity: null});
+
+    const {getByLabelText} = render(withTheme(<TitleBar {...props} />));
+
+    const threadStatus = getByLabelText('Thread active');
+    const infoButton = getByLabelText('tooltipConversationInfo');
+
+    expect(threadStatus.tagName).toBe('SPAN');
+    expect(threadStatus.className).toContain('active');
+    expect(infoButton.className).not.toContain('active');
   });
 
   it('hide info button and search button on scaled down view', async () => {
