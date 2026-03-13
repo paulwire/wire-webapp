@@ -56,5 +56,17 @@ export const threadRepliesButton: CSSObject = {
 export const threadRepliesButtonUnread: CSSObject = {
   backgroundColor: 'var(--accent-color-50)',
   borderRadius: '8px',
+  color: 'var(--main-color)',
   padding: '2px 8px',
+  'body.theme-dark &': {
+    backgroundColor: 'var(--accent-color-800)',
+  },
+};
+
+export const threadRepliesButtonUnreadMentioned: CSSObject = {
+  backgroundColor: 'var(--accent-color-100)',
+  fontWeight: 500,
+  'body.theme-dark &': {
+    backgroundColor: 'var(--accent-color-700)',
+  },
 };

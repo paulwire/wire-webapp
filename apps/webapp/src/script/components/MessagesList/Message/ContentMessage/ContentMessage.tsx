@@ -29,7 +29,11 @@ import {WebAppEvents} from '@wireapp/webapp-events';
 
 import {ReadIndicator} from 'Components/MessagesList/Message/ReadIndicator';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
-import {getThreadUnreadRepliesCount, useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
+import {
+  getThreadHasUnreadMentionForSelf,
+  getThreadUnreadRepliesCount,
+  useThreadUnreadRepliesStore,
+} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {useClickOutside} from 'Hooks/useClickOutside';
 import {Conversation} from 'Repositories/entity/Conversation';
 import {CompositeMessage} from 'Repositories/entity/message/CompositeMessage';
@@ -47,6 +51,7 @@ import {
   messageBodyWrapper,
   messageEphemeralTimer,
   threadRepliesButton,
+  threadRepliesButtonUnreadMentioned,
   threadRepliesButtonUnread,
   threadRepliesContainer,
 } from './ContentMessage.styles';
@@ -161,6 +166,9 @@ export const ContentMessageComponent = ({
   const canShowThreadReplies = showThreadSummary && message.isReplyable() && !message.threadId;
   const threadUnreadRepliesCount = useThreadUnreadRepliesStore(state =>
     getThreadUnreadRepliesCount(conversation.id, message.id, state),
+  );
+  const hasUnreadThreadMentionForSelf = useThreadUnreadRepliesStore(state =>
+    getThreadHasUnreadMentionForSelf(conversation.id, message.id, state),
   );
 
   useEffect(() => {
@@ -361,13 +369,18 @@ export const ContentMessageComponent = ({
           <button
             type="button"
             data-uie-name="do-open-message-thread"
-            css={[threadRepliesButton, threadUnreadRepliesCount > 0 && threadRepliesButtonUnread]}
+            css={[
+              threadRepliesButton,
+              threadUnreadRepliesCount > 0 && threadRepliesButtonUnread,
+              hasUnreadThreadMentionForSelf && threadRepliesButtonUnreadMentioned,
+            ]}
             onClick={() => onClickThread(message)}
           >
             {(threadRepliesCount === 1
               ? t('conversationsSecondaryLineSummaryReply', {number: 1})
               : t('conversationsSecondaryLineSummaryReplies', {number: threadRepliesCount})) +
-              (threadUnreadRepliesCount > 0 ? `, ${threadUnreadRepliesCount} unread` : '')}
+              (threadUnreadRepliesCount > 0 ? `, ${threadUnreadRepliesCount} unread` : '') +
+              (hasUnreadThreadMentionForSelf ? ', you were mentioned' : '')}
           </button>
         </div>
       )}

@@ -30,6 +30,7 @@ import {ConversationVerificationBadges} from 'Components/Badge';
 import {useCallAlertState} from 'Components/calling/useCallAlertState';
 import * as Icon from 'Components/Icon';
 import {LegalHoldDot} from 'Components/LegalHoldDot';
+import {ThreadsOutlineIcon} from 'Components/ThreadIcons';
 import {useConversationCall} from 'Hooks/useConversationCall';
 import {useNoInternetCallGuard} from 'Hooks/useNoInternetCallGuard/useNoInternetCallGuard';
 import {CallState} from 'Repositories/calling/CallState';
@@ -376,7 +377,7 @@ export const TitleBar = ({
                 className={cx('conversation-title-bar-icon', {active: isThreadPanelOpen})}
                 data-uie-name="status-open-thread"
               >
-                <Icon.MessageIcon />
+                <ThreadsOutlineIcon />
               </span>
             )}
             <button

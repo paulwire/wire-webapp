@@ -30,6 +30,7 @@ import * as Icon from 'Components/Icon';
 import {InputBar} from 'Components/InputBar';
 import {Message as MessageComponent} from 'Components/MessagesList/Message';
 import {MarkerComponent} from 'Components/MessagesList/Message/Marker';
+import {useThreadIndexStore} from 'Components/MessagesList/threading/threadIndexStore';
 import {THREAD_REPLY_SENT, ThreadReplySentPayload} from 'Components/MessagesList/threading/threadingEvents';
 import {useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
 import {groupMessagesBySenderAndTime, isMarker} from 'Components/MessagesList/utils/messagesGroup';
@@ -42,6 +43,7 @@ import {Conversation} from 'Repositories/entity/Conversation';
 import {ContentMessage} from 'Repositories/entity/message/ContentMessage';
 import {Message as MessageEntity} from 'Repositories/entity/message/Message';
 import {User} from 'Repositories/entity/User';
+import {ClientEvent} from 'Repositories/event/Client';
 import {EventRepository} from 'Repositories/event/EventRepository';
 import {GiphyRepository} from 'Repositories/extension/GiphyRepository';
 import {PropertiesRepository} from 'Repositories/properties/PropertiesRepository';
@@ -56,11 +58,13 @@ import {getLogger} from 'Util/Logger';
 import {PanelHeader} from '../PanelHeader';
 
 type ThreadBackendEvent = {
+  type?: string;
   conversation?: string;
   data?: {
     thread_id?: string | null;
     thread_root_message_id?: string | null;
     threadId?: string | null;
+    message_id?: string;
   };
   thread_id?: string | null;
   thread_root_message_id?: string | null;
@@ -80,6 +84,24 @@ const getBackendEventThreadId = (event?: ThreadBackendEvent): string | null =>
       event?.data?.thread_root_message_id ??
       null,
   );
+const getReactionTargetMessageId = (event?: ThreadBackendEvent): string | null =>
+  event?.type === ClientEvent.CONVERSATION.REACTION && event.data?.message_id ? event.data.message_id : null;
+
+const mergeThreadReplies = (persistedReplies: ContentMessage[], localReplies: ContentMessage[]) => {
+  const mergedById = new Map<string, ContentMessage>();
+
+  persistedReplies.forEach(reply => {
+    mergedById.set(reply.id, reply);
+  });
+
+  // Keep local/in-memory replies as source of truth when they already exist in the active conversation.
+  // This avoids flicker when storage/backend refresh is briefly behind optimistic local sends.
+  localReplies.forEach(reply => {
+    mergedById.set(reply.id, reply);
+  });
+
+  return Array.from(mergedById.values());
+};
 
 interface MessageThreadProps {
   activeConversation: Conversation;
@@ -116,7 +138,6 @@ export const MessageThread: FC<MessageThreadProps> = ({
   selfUser,
   actionsViewModel,
 }) => {
-  const rootContentMessage = isContentMessage(rootMessage) ? rootMessage : null;
   const threadId = rootMessage.threadId ?? rootMessage.id;
 
   const [threadReplies, setThreadReplies] = useState<ContentMessage[]>([]);
@@ -129,6 +150,14 @@ export const MessageThread: FC<MessageThreadProps> = ({
   const isMountedRef = useRef(true);
   const pendingWindowFocusHandlersRef = useRef(new Set<() => void>());
   const [isMsgElementsFocusable, setMsgElementsFocusable] = useState(false);
+  const rootContentMessage = useMemo(() => {
+    const rootFromConversation = activeConversation.getMessage(threadId);
+    if (isContentMessage(rootFromConversation)) {
+      return rootFromConversation;
+    }
+
+    return isContentMessage(rootMessage) ? rootMessage : null;
+  }, [activeConversation, rootMessage, threadId, threadReplies.length]);
 
   const loadThreadReplies = useCallback(async () => {
     const requestId = ++latestLoadRequestIdRef.current;
@@ -146,9 +175,13 @@ export const MessageThread: FC<MessageThreadProps> = ({
       const messagesWithUsers = await Promise.all(
         contentMessages.map(message => messageRepository.ensureMessageSender(message)),
       );
+      const localThreadReplies = activeConversation
+        .messages()
+        .filter((message): message is ContentMessage => isContentMessage(message) && message.threadId === threadId);
+      const mergedReplies = mergeThreadReplies(messagesWithUsers, localThreadReplies);
 
       if (isMountedRef.current && requestId === latestLoadRequestIdRef.current) {
-        setThreadReplies(messagesWithUsers);
+        setThreadReplies(mergedReplies);
       }
     } catch (error) {
       logger.warn(
@@ -179,6 +212,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
     () => groupMessagesBySenderAndTime(threadMessages, Number.MAX_SAFE_INTEGER),
     [threadMessages],
   );
+  const threadMessageIds = useMemo(() => new Set(threadMessages.map(message => message.id)), [threadMessages]);
 
   useEffect(() => {
     void loadThreadReplies();
@@ -191,6 +225,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
 
     const rafId = window.requestAnimationFrame(() => {
       useThreadUnreadRepliesStore.getState().markThreadAsRead(activeConversation.id, threadId);
+      useThreadIndexStore.getState().markThreadRead(activeConversation.id, threadId);
     });
 
     return () => {
@@ -226,6 +261,12 @@ export const MessageThread: FC<MessageThreadProps> = ({
 
       if (getBackendEventThreadId(event) === threadId) {
         void loadThreadReplies();
+        return;
+      }
+
+      const reactionTargetMessageId = getReactionTargetMessageId(event);
+      if (reactionTargetMessageId && threadMessageIds.has(reactionTargetMessageId)) {
+        void loadThreadReplies();
       }
     };
 
@@ -236,7 +277,7 @@ export const MessageThread: FC<MessageThreadProps> = ({
       amplify.unsubscribe(THREAD_REPLY_SENT, handleReply);
       amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleEventFromBackend);
     };
-  }, [activeConversation.id, loadThreadReplies, threadId]);
+  }, [activeConversation.id, loadThreadReplies, threadId, threadMessageIds]);
 
   useEffect(() => {
     threadListRef.current?.scrollTo({top: threadListRef.current.scrollHeight});

@@ -24,14 +24,16 @@ type ThreadState = {
   unreadCount: number;
   hasReplyFromSelf: boolean;
   isRootAuthoredBySelf: boolean;
+  hasUnreadMentionForSelf: boolean;
 };
 
 type ThreadUnreadRepliesState = {
   threadStateByKey: Record<string, ThreadState>;
-  incrementUnreadForThread: (conversationId: string, threadId: string) => void;
+  incrementUnreadForThread: (conversationId: string, threadId: string, hasMentionForSelf?: boolean) => void;
   markThreadAsRead: (conversationId: string, threadId: string) => void;
   markThreadRepliedBySelf: (conversationId: string, threadId: string) => void;
   markThreadRootAuthoredBySelf: (conversationId: string, threadId: string) => void;
+  markThreadUnreadMentionForSelf: (conversationId: string, threadId: string) => void;
 };
 
 const getThreadStateKey = (conversationId: string, threadId: string) => `${conversationId}:${threadId}`;
@@ -40,13 +42,14 @@ const getDefaultThreadState = (): ThreadState => ({
   unreadCount: 0,
   hasReplyFromSelf: false,
   isRootAuthoredBySelf: false,
+  hasUnreadMentionForSelf: false,
 });
 
 const useThreadUnreadRepliesStore = create<ThreadUnreadRepliesState>()(
   persist(
-    (set, get) => ({
+    set => ({
       threadStateByKey: {},
-      incrementUnreadForThread: (conversationId, threadId) =>
+      incrementUnreadForThread: (conversationId, threadId, hasMentionForSelf = false) =>
         set(state => {
           const key = getThreadStateKey(conversationId, threadId);
           const current = state.threadStateByKey[key] ?? getDefaultThreadState();
@@ -54,7 +57,11 @@ const useThreadUnreadRepliesStore = create<ThreadUnreadRepliesState>()(
           return {
             threadStateByKey: {
               ...state.threadStateByKey,
-              [key]: {...current, unreadCount: current.unreadCount + 1},
+              [key]: {
+                ...current,
+                unreadCount: current.unreadCount + 1,
+                hasUnreadMentionForSelf: current.hasUnreadMentionForSelf || hasMentionForSelf,
+              },
             },
           };
         }),
@@ -70,7 +77,7 @@ const useThreadUnreadRepliesStore = create<ThreadUnreadRepliesState>()(
           return {
             threadStateByKey: {
               ...state.threadStateByKey,
-              [key]: {...current, unreadCount: 0},
+              [key]: {...current, unreadCount: 0, hasUnreadMentionForSelf: false},
             },
           };
         }),
@@ -106,6 +113,22 @@ const useThreadUnreadRepliesStore = create<ThreadUnreadRepliesState>()(
             },
           };
         }),
+      markThreadUnreadMentionForSelf: (conversationId, threadId) =>
+        set(state => {
+          const key = getThreadStateKey(conversationId, threadId);
+          const current = state.threadStateByKey[key] ?? getDefaultThreadState();
+
+          if (current.hasUnreadMentionForSelf) {
+            return state;
+          }
+
+          return {
+            threadStateByKey: {
+              ...state.threadStateByKey,
+              [key]: {...current, hasUnreadMentionForSelf: true},
+            },
+          };
+        }),
     }),
     {
       name: 'thread-unread-replies-store',
@@ -120,8 +143,20 @@ export const isThreadTrackedForSelf = (conversationId: string, threadId: string,
   return !!entry?.isRootAuthoredBySelf || !!entry?.hasReplyFromSelf;
 };
 
-export const getThreadUnreadRepliesCount = (conversationId: string, threadId: string, state: ThreadUnreadRepliesState) => {
+export const getThreadUnreadRepliesCount = (
+  conversationId: string,
+  threadId: string,
+  state: ThreadUnreadRepliesState,
+) => {
   return state.threadStateByKey[getThreadStateKey(conversationId, threadId)]?.unreadCount ?? 0;
+};
+
+export const getThreadHasUnreadMentionForSelf = (
+  conversationId: string,
+  threadId: string,
+  state: ThreadUnreadRepliesState,
+) => {
+  return state.threadStateByKey[getThreadStateKey(conversationId, threadId)]?.hasUnreadMentionForSelf ?? false;
 };
 
 export const getConversationUnreadThreadRepliesCount = (conversationId: string, state: ThreadUnreadRepliesState) => {
@@ -133,6 +168,17 @@ export const getConversationUnreadThreadRepliesCount = (conversationId: string, 
 
     return total + (threadState.unreadCount ?? 0);
   }, 0);
+};
+
+export const getConversationHasUnreadThreadMentions = (conversationId: string, state: ThreadUnreadRepliesState) => {
+  const prefix = `${conversationId}:`;
+  return Object.entries(state.threadStateByKey).some(([key, threadState]) => {
+    if (!key.startsWith(prefix)) {
+      return false;
+    }
+
+    return threadState.unreadCount > 0 && !!threadState.hasUnreadMentionForSelf;
+  });
 };
 
 export {useThreadUnreadRepliesStore};

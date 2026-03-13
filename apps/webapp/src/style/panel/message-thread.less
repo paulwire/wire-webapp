@@ -59,6 +59,12 @@
   .input-bar-field {
     padding-right: 4px;
   }
+
+  // The root message has action controls positioned above the bubble.
+  // Reserve headroom so the controls are not clipped by the thread title bar.
+  .message-thread-root-highlight {
+    margin-top: 58px;
+  }
 }
 
 .message-thread-focus-overlay {
@@ -85,6 +91,10 @@
     position: relative;
     width: 100%;
     height: 100%;
+
+    .panel__content {
+      width: 100%;
+    }
   }
 }
 
@@ -93,4 +103,9 @@
   z-index: 3;
   top: 0;
   right: var(--content-title-bar-height);
+  display: flex;
+  width: var(--content-title-bar-height);
+  height: var(--content-title-bar-height);
+  align-items: center;
+  justify-content: center;
 }

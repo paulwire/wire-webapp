@@ -20,7 +20,12 @@
 import {useMemo} from 'react';
 
 import * as Icon from 'Components/Icon';
-import {getConversationUnreadThreadRepliesCount, useThreadUnreadRepliesStore} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
+import {
+  getConversationHasUnreadThreadMentions,
+  getConversationUnreadThreadRepliesCount,
+  useThreadUnreadRepliesStore,
+} from 'Components/MessagesList/threading/threadUnreadRepliesStore';
+import {ThreadsIcon} from 'Components/ThreadIcons';
 import {generateCellState} from 'Repositories/conversation/ConversationCellState';
 import {ConversationStatusIcon} from 'Repositories/conversation/ConversationStatusIcon';
 import type {Conversation} from 'Repositories/entity/Conversation';
@@ -32,28 +37,29 @@ interface Props {
 }
 
 export const StatusIcon = ({conversation}: Props) => {
-  const {unreadState, mutedState, isRequest} = useKoSubscribableChildren(conversation, [
-    'unreadState',
-    'mutedState',
-    'isRequest',
-  ]);
+  useKoSubscribableChildren(conversation, ['unreadState', 'mutedState', 'isRequest']);
 
-  const cellState = useMemo(() => generateCellState(conversation), [unreadState, mutedState, isRequest]);
-  const unreadThreadRepliesCount = useThreadUnreadRepliesStore(state => getConversationUnreadThreadRepliesCount(conversation.id, state));
+  const cellState = useMemo(() => generateCellState(conversation), [conversation]);
+  const unreadThreadRepliesCount = useThreadUnreadRepliesStore(state =>
+    getConversationUnreadThreadRepliesCount(conversation.id, state),
+  );
+  const hasUnreadThreadMentions = useThreadUnreadRepliesStore(state =>
+    getConversationHasUnreadThreadMentions(conversation.id, state),
+  );
 
   const isMutedOrPendingIcon =
     cellState.icon === ConversationStatusIcon.MUTED || cellState.icon === ConversationStatusIcon.PENDING_CONNECTION;
 
-  const iconToRender = (() => {
-    if (cellState.icon === ConversationStatusIcon.UNREAD_MENTION) {
-      return ConversationStatusIcon.UNREAD_MENTION;
-    }
+  const showMentionIcon = cellState.icon === ConversationStatusIcon.UNREAD_MENTION || hasUnreadThreadMentions;
+  const effectiveCellIcon =
+    cellState.icon === ConversationStatusIcon.UNREAD_MENTION ? ConversationStatusIcon.NONE : cellState.icon;
 
+  const iconToRender = (() => {
     if (unreadThreadRepliesCount > 0 && !isMutedOrPendingIcon) {
       return ConversationStatusIcon.UNREAD_THREAD;
     }
 
-    return cellState.icon;
+    return effectiveCellIcon;
   })();
 
   return (
@@ -68,7 +74,7 @@ export const StatusIcon = ({conversation}: Props) => {
         </span>
       )}
 
-      {iconToRender === ConversationStatusIcon.UNREAD_MENTION && (
+      {showMentionIcon && (
         <span
           className="conversation-list-cell-badge cell-badge-dark"
           data-uie-name="status-mention"
@@ -85,7 +91,7 @@ export const StatusIcon = ({conversation}: Props) => {
           title={t('accessibility.conversationStatusUnreadReply')}
           aria-label={t('accessibility.conversationStatusUnreadReply')}
         >
-          <Icon.MessageIcon className="svg-icon" />
+          <ThreadsIcon className="svg-icon" />
         </span>
       )}
 
@@ -131,16 +137,16 @@ export const StatusIcon = ({conversation}: Props) => {
       )}
 
       {(iconToRender === ConversationStatusIcon.UNREAD_MESSAGES ||
-        (iconToRender === ConversationStatusIcon.UNREAD_THREAD && unreadState.allMessages.length > 0)) &&
-        unreadState.allMessages.length > 0 && (
-        <span
-          className="conversation-list-cell-badge cell-badge-dark"
-          data-uie-name="status-unread"
-          title={t('accessibility.conversationStatusUnread')}
-        >
-          {unreadState.allMessages.length}
-        </span>
-      )}
+        (iconToRender === ConversationStatusIcon.UNREAD_THREAD && conversation.unreadState().allMessages.length > 0)) &&
+        conversation.unreadState().allMessages.length > 0 && (
+          <span
+            className="conversation-list-cell-badge cell-badge-dark"
+            data-uie-name="status-unread"
+            title={t('accessibility.conversationStatusUnread')}
+          >
+            {conversation.unreadState().allMessages.length}
+          </span>
+        )}
     </>
   );
 };
