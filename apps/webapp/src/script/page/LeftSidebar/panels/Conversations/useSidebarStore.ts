@@ -22,6 +22,7 @@ import {persist, createJSONStorage} from 'zustand/middleware';
 
 export enum SidebarTabs {
   RECENT,
+  THREADS,
   FOLDER,
   FAVORITES,
   GROUPS,

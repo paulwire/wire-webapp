@@ -17,15 +17,16 @@
  *
  */
 
-import {useCallback, useEffect, useLayoutEffect, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
 
+import {CONVERSATION_EVENT} from '@wireapp/api-client/lib/event/';
 import {amplify} from 'amplify';
 import cx from 'classnames';
 import ky from 'ky';
 import {ErrorBoundary} from 'react-error-boundary';
 import {container} from 'tsyringe';
-import {CONVERSATION_EVENT} from '@wireapp/api-client/lib/event/';
 
+import {Mention} from '@wireapp/protocol-messaging';
 import {QUERY, StyledApp, THEME_ID, useMatchMedia} from '@wireapp/react-ui-kit';
 import {WebAppEvents} from '@wireapp/webapp-events';
 
@@ -49,6 +50,7 @@ import {showInitialModal} from 'Repositories/user/AvailabilityModal';
 import {UserState} from 'Repositories/user/UserState';
 import {isUUID} from 'src/script/auth/util/stringUtil';
 import {Config} from 'src/script/Config';
+import {base64ToArray} from 'src/script/util/util';
 import {useKoSubscribableChildren} from 'Util/ComponentUtil';
 
 import {AppLock} from './AppLock';
@@ -65,22 +67,23 @@ import {RootProvider} from './RootProvider';
 import {useAppMainState, ViewType} from './state';
 import {ContentState, useAppState} from './useAppState';
 
+import {
+  isThreadTrackedForSelf,
+  useThreadUnreadRepliesStore,
+} from '../components/MessagesList/threading/threadUnreadRepliesStore';
+import {useThreadIndexStore} from '../components/MessagesList/threading/threadIndexStore';
 import {runClientVersionCheck} from '../application-periodic-checks/runClientVersionCheck';
 import {startApplicationPeriodicChecks} from '../application-periodic-checks/startApplicationPeriodicChecks';
 import {WallClock} from '../clock/wallClock';
 import {StartupFeatureToggleName} from '../featureToggles/startupFeatureToggles';
 import {App} from '../main/app';
 import {initialiseMLSMigrationFlow} from '../mls/MLSMigration';
+import {ClientEvent} from '../repositories/event/Client';
 import {generateConversationUrl} from '../router/routeGenerator';
 import {configureRoutes, navigate} from '../router/Router';
 import {TIME_IN_MILLIS} from '../util/TimeUtil';
 import {MainViewModel} from '../view_model/MainViewModel';
 import {WarningsContainer} from '../view_model/WarningsContainer/WarningsContainer';
-import {ClientEvent} from '../repositories/event/Client';
-import {
-  isThreadTrackedForSelf,
-  useThreadUnreadRepliesStore,
-} from '../components/MessagesList/threading/threadUnreadRepliesStore';
 
 export type RightSidebarParams = {
   entity: PanelEntity | null;
@@ -139,6 +142,7 @@ export const AppMain = ({
     'availability',
     'isActivatedAccount',
   ]);
+  const {visibleConversations} = useKoSubscribableChildren(conversationState, ['visibleConversations']);
 
   const {hasAvailableScreensToShare, desktopScreenShareMenu, viewMode} = useKoSubscribableChildren(callState, [
     'hasAvailableScreensToShare',
@@ -148,6 +152,7 @@ export const AppMain = ({
 
   const teamState = container.resolve(TeamState);
   const userState = container.resolve(UserState);
+  const hasHydratedThreadIndexRef = useRef(false);
 
   const isScreenshareActive =
     hasAvailableScreensToShare && desktopScreenShareMenu === DesktopScreenShareMenu.MAIN_WINDOW;
@@ -290,6 +295,37 @@ export const AppMain = ({
     });
   };
 
+  const normalizeThreadId = (threadId?: string | null) =>
+    typeof threadId === 'string' && threadId.length ? threadId : null;
+
+  const extractThreadPreview = (event?: {
+    data?: {
+      content?: string;
+      text?: {content?: string};
+    };
+  }) => {
+    const preview = event?.data?.text?.content ?? event?.data?.content;
+    if (typeof preview !== 'string') {
+      return undefined;
+    }
+
+    const normalizedPreview = preview.trim();
+    return normalizedPreview.length > 0 ? normalizedPreview : undefined;
+  };
+
+  const isThreadReplyMessageEvent = (eventType?: string) => {
+    if (!eventType) {
+      return false;
+    }
+
+    return (
+      eventType === ClientEvent.CONVERSATION.MESSAGE_ADD ||
+      eventType === ClientEvent.CONVERSATION.MULTIPART_MESSAGE_ADD ||
+      eventType === CONVERSATION_EVENT.OTR_MESSAGE_ADD ||
+      eventType === CONVERSATION_EVENT.MLS_MESSAGE_ADD
+    );
+  };
+
   useEffect(() => {
     PrimaryModal.init();
     showInitialModal(userAvailability);
@@ -303,38 +339,175 @@ export const AppMain = ({
     }
   }, [locked]);
 
+  useEffect(() => {
+    if (!visibleConversations.length) {
+      return;
+    }
+
+    const accessibleConversationIds = visibleConversations.map(conversation => conversation.id);
+    useThreadIndexStore.getState().pruneToConversationIds(accessibleConversationIds);
+  }, [visibleConversations]);
+
+  useEffect(() => {
+    if (hasHydratedThreadIndexRef.current || !visibleConversations.length) {
+      return;
+    }
+
+    hasHydratedThreadIndexRef.current = true;
+
+    const hydrateThreadIndex = async () => {
+      const HYDRATION_CONVERSATION_LIMIT = 100;
+      const HYDRATION_WINDOW_IN_DAYS = 30;
+      // POC safeguard to avoid unbounded local growth until cleanup policies are finalized.
+      const THREAD_INDEX_MAX_ENTRIES = 2000;
+      const fromDate = new Date(Date.now() - HYDRATION_WINDOW_IN_DAYS * 24 * 60 * 60 * 1000);
+      const recentConversations = visibleConversations.slice(0, HYDRATION_CONVERSATION_LIMIT);
+      const aggregatedThreads = new Map<
+        string,
+        {
+          conversationId: string;
+          threadId: string;
+          lastReplyAt: string;
+          lastReplyMessageId?: string;
+          lastReplyAuthorId?: string;
+          lastReplyPreview?: string;
+          replyCount: number;
+          hasReplyBySelf: boolean;
+          seenMessageIds: Set<string>;
+        }
+      >();
+
+      await Promise.all(
+        recentConversations.map(async conversation => {
+          try {
+            const events = (await repositories.event.eventService.loadFollowingEvents(
+              conversation.id,
+              fromDate,
+              Number.MAX_SAFE_INTEGER,
+              true,
+              {includeThreadReplies: true},
+            )) as Array<{
+              conversation?: string;
+              from?: string;
+              id?: string;
+              is_thread_reply?: boolean;
+              thread_id?: string | null;
+              thread_root_message_id?: string | null;
+              time?: string;
+              type?: string;
+              data?: {
+                content?: string;
+                text?: {content?: string};
+              };
+            }>;
+
+            events.forEach(event => {
+              const conversationId = event?.conversation;
+              const threadId = normalizeThreadId(event?.thread_id ?? event?.thread_root_message_id);
+
+              if (!conversationId || !threadId || !event?.is_thread_reply || !isThreadReplyMessageEvent(event.type)) {
+                return;
+              }
+
+              const key = `${conversationId}:${threadId}`;
+              const current = aggregatedThreads.get(key) ?? {
+                conversationId,
+                threadId,
+                lastReplyAt: new Date(0).toISOString(),
+                replyCount: 0,
+                hasReplyBySelf: false,
+                seenMessageIds: new Set<string>(),
+              };
+
+              if (event.id && current.seenMessageIds.has(event.id)) {
+                return;
+              }
+              if (event.id) {
+                current.seenMessageIds.add(event.id);
+              }
+
+              current.replyCount += 1;
+              current.hasReplyBySelf = current.hasReplyBySelf || event.from === selfUser.id;
+
+              const eventTime = event.time ?? new Date().toISOString();
+              if (new Date(eventTime).getTime() >= new Date(current.lastReplyAt).getTime()) {
+                current.lastReplyAt = eventTime;
+                current.lastReplyMessageId = event.id;
+                current.lastReplyAuthorId = event.from;
+                current.lastReplyPreview = extractThreadPreview(event);
+              }
+
+              aggregatedThreads.set(key, current);
+            });
+          } catch {
+            // Keep partial hydration results if one conversation scan fails.
+          }
+        }),
+      );
+
+      const threadIndexStore = useThreadIndexStore.getState();
+      await Promise.all(
+        Array.from(aggregatedThreads.values()).map(async thread => {
+          let isRootMessageBySelf = false;
+          let rootMessagePreview: string | undefined;
+          try {
+            const rootEvent = await repositories.event.eventService.loadEvent(thread.conversationId, thread.threadId);
+            isRootMessageBySelf = rootEvent?.from === selfUser.id;
+            rootMessagePreview = extractThreadPreview(rootEvent);
+          } catch {
+            // Keep best-effort hydration when root event cannot be resolved.
+          }
+
+          threadIndexStore.reconcileHydratedThread({
+            conversationId: thread.conversationId,
+            threadId: thread.threadId,
+            rootMessagePreview,
+            lastReplyAt: thread.lastReplyAt,
+            lastReplyMessageId: thread.lastReplyMessageId,
+            lastReplyAuthorId: thread.lastReplyAuthorId,
+            lastReplyPreview: thread.lastReplyPreview,
+            replyCount: thread.replyCount,
+            hasReplyBySelf: thread.hasReplyBySelf,
+            isRootMessageBySelf,
+          });
+        }),
+      );
+
+      threadIndexStore.pruneToMostRecent(THREAD_INDEX_MAX_ENTRIES);
+    };
+
+    void hydrateThreadIndex();
+  }, [repositories.event.eventService, selfUser.id, visibleConversations]);
+
   useE2EIFeatureConfigUpdate(repositories.team);
 
   useEffect(() => {
     const pendingEligibilityChecks = new Set<string>();
-    const normalizeThreadId = (threadId?: string | null) => (typeof threadId === 'string' && threadId.length ? threadId : null);
-
-    const isThreadReplyMessageEvent = (eventType?: string) => {
-      if (!eventType) {
-        return false;
-      }
-
-      return (
-        eventType === ClientEvent.CONVERSATION.MESSAGE_ADD ||
-        eventType === ClientEvent.CONVERSATION.MULTIPART_MESSAGE_ADD ||
-        eventType === CONVERSATION_EVENT.OTR_MESSAGE_ADD ||
-        eventType === CONVERSATION_EVENT.MLS_MESSAGE_ADD
-      );
-    };
 
     const handleBackendEvent = async (event?: {
       type?: string;
       conversation?: string;
       from?: string;
       id?: string;
+      time?: string;
+      mentions?: string[];
       is_thread_reply?: boolean;
       thread_id?: string | null;
       thread_root_message_id?: string | null;
-      data?: {thread_id?: string | null; thread_root_message_id?: string | null};
+      data?: {
+        mentions?: string[];
+        content?: string;
+        text?: {mentions?: string[]};
+        thread_id?: string | null;
+        thread_root_message_id?: string | null;
+      };
     }) => {
       const conversationId = event?.conversation;
       const threadId = normalizeThreadId(
-        event?.thread_id ?? event?.thread_root_message_id ?? event?.data?.thread_id ?? event?.data?.thread_root_message_id,
+        event?.thread_id ??
+          event?.thread_root_message_id ??
+          event?.data?.thread_id ??
+          event?.data?.thread_root_message_id,
       );
 
       if (!conversationId || !threadId || !event?.is_thread_reply || !isThreadReplyMessageEvent(event.type)) {
@@ -342,15 +515,57 @@ export const AppMain = ({
       }
 
       const threadStore = useThreadUnreadRepliesStore.getState();
+      const threadIndexStore = useThreadIndexStore.getState();
       const threadKey = `${conversationId}:${threadId}`;
+      const selfDomain = selfUser.qualifiedId?.domain ?? '';
+      const mentionPayloads = [
+        ...(event?.mentions ?? []),
+        ...(event?.data?.mentions ?? []),
+        ...(event?.data?.text?.mentions ?? []),
+      ];
+      const isSelfMentionedInThreadReply = mentionPayloads.some(encodedMention => {
+        try {
+          const mention = Mention.decode(base64ToArray(encodedMention));
+          const mentionedId = mention.qualifiedUserId?.id || mention.userId;
+          const mentionedDomain = mention.qualifiedUserId?.domain ?? '';
+
+          if (!mentionedId || mentionedId !== selfUser.id) {
+            return false;
+          }
+
+          return !mentionedDomain || !selfDomain || mentionedDomain === selfDomain;
+        } catch {
+          return false;
+        }
+      });
+
+      threadIndexStore.recordThreadReplyEvent({
+        conversationId,
+        threadId,
+        eventTime: event.time,
+        messageId: event.id,
+        authorId: event.from,
+        preview: extractThreadPreview(event),
+        isSelfReply: event.from === selfUser.id,
+        hasSelfMention: isSelfMentionedInThreadReply,
+      });
 
       if (event.from === selfUser.id) {
         threadStore.markThreadRepliedBySelf(conversationId, threadId);
         return;
       }
 
+      if (isSelfMentionedInThreadReply) {
+        threadStore.markThreadUnreadMentionForSelf(conversationId, threadId);
+      }
+
       if (isThreadTrackedForSelf(conversationId, threadId, threadStore)) {
-        threadStore.incrementUnreadForThread(conversationId, threadId);
+        threadStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);
+        return;
+      }
+
+      if (isSelfMentionedInThreadReply) {
+        threadStore.incrementUnreadForThread(conversationId, threadId, true);
         return;
       }
 
@@ -362,20 +577,33 @@ export const AppMain = ({
 
       try {
         const rootEvent = await repositories.event.eventService.loadEvent(conversationId, threadId);
+        const rootMessagePreview = extractThreadPreview(rootEvent);
+        if (rootMessagePreview) {
+          useThreadIndexStore.getState().upsertThread({
+            conversationId,
+            threadId,
+            rootMessagePreview,
+          });
+        }
+
         if (rootEvent?.from === selfUser.id) {
           const freshStore = useThreadUnreadRepliesStore.getState();
+          const freshThreadIndexStore = useThreadIndexStore.getState();
           freshStore.markThreadRootAuthoredBySelf(conversationId, threadId);
-          freshStore.incrementUnreadForThread(conversationId, threadId);
+          freshThreadIndexStore.markThreadRootMessageBySelf(conversationId, threadId);
+          freshStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);
           return;
         }
 
         const threadEvents = await repositories.event.eventService.loadThreadEvents(conversationId, threadId);
-        const hasReplyFromSelf = threadEvents.some(threadEvent => threadEvent.id !== threadId && threadEvent.from === selfUser.id);
+        const hasReplyFromSelf = threadEvents.some(
+          threadEvent => threadEvent.id !== threadId && threadEvent.from === selfUser.id,
+        );
 
         if (hasReplyFromSelf) {
           const freshStore = useThreadUnreadRepliesStore.getState();
           freshStore.markThreadRepliedBySelf(conversationId, threadId);
-          freshStore.incrementUnreadForThread(conversationId, threadId);
+          freshStore.incrementUnreadForThread(conversationId, threadId, isSelfMentionedInThreadReply);
         }
       } finally {
         pendingEligibilityChecks.delete(threadKey);
@@ -386,7 +614,7 @@ export const AppMain = ({
     return () => {
       amplify.unsubscribe(WebAppEvents.CONVERSATION.EVENT_FROM_BACKEND, handleBackendEvent);
     };
-  }, [repositories.event.eventService, selfUser.id]);
+  }, [repositories.event.eventService, selfUser.id, selfUser.qualifiedId?.domain]);
 
   const showLeftSidebar = (isMobileView && isMobileLeftSidebarView) || (!isMobileView && !isLeftSidebarHidden);
   const showMainContent = currentTab === SidebarTabs.CELLS || !isMobileView || isMobileCentralColumnView;

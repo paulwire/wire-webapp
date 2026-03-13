@@ -32,6 +32,7 @@ import {
 } from '@wireapp/react-ui-kit';
 
 import * as Icon from 'Components/Icon';
+import {ThreadsOutlineIcon} from 'Components/ThreadIcons';
 import {ConversationRepository} from 'Repositories/conversation/ConversationRepository';
 import {Conversation} from 'Repositories/entity/Conversation';
 import {User} from 'Repositories/entity/User';
@@ -187,6 +188,23 @@ export const ConversationTabs = ({
         className="conversations-sidebar-list"
       >
         <div className="conversations-sidebar-title" css={conversationsTitleWrapper}>
+          <span>Threads</span>
+        </div>
+
+        <ConversationTab
+          title="All threads"
+          label="All threads"
+          type={SidebarTabs.THREADS}
+          Icon={<ThreadsOutlineIcon />}
+          onChangeTab={onChangeTab}
+          conversationTabIndex={1}
+          dataUieName="go-threads-view"
+          isActive={currentTab === SidebarTabs.THREADS}
+        />
+
+        <div className="conversations-sidebar-divider" />
+
+        <div className="conversations-sidebar-title" css={conversationsTitleWrapper}>
           <span>{t('videoCallOverlayConversations')}</span>
           <ConversationFilterButton />
         </div>
@@ -199,7 +217,7 @@ export const ConversationTabs = ({
                 unreadConversations={unreadConversations}
                 conversationRepository={conversationRepository}
                 key={conversationTab.type}
-                conversationTabIndex={index + 1}
+                conversationTabIndex={index + 2}
                 onChangeTab={onChangeTab}
                 isActive={conversationTab.type === currentTab}
               />
@@ -210,7 +228,7 @@ export const ConversationTabs = ({
             <ConversationTab
               {...conversationTab}
               key={conversationTab.type}
-              conversationTabIndex={index + 1}
+              conversationTabIndex={index + 2}
               onChangeTab={onChangeTab}
               isActive={conversationTab.type === currentTab}
             />
@@ -229,7 +247,7 @@ export const ConversationTabs = ({
           type={SidebarTabs.CONNECT}
           Icon={<Icon.AddParticipantsIcon />}
           onChangeTab={onChangeTab}
-          conversationTabIndex={conversationTabs.length + 1}
+          conversationTabIndex={conversationTabs.length + 2}
           dataUieName="go-people"
           isActive={currentTab === SidebarTabs.CONNECT}
         />
@@ -248,7 +266,7 @@ export const ConversationTabs = ({
               type={SidebarTabs.CELLS}
               Icon={<CollectionIcon />}
               onChangeTab={onChangeTab}
-              conversationTabIndex={conversationTabs.length + 2}
+              conversationTabIndex={conversationTabs.length + 3}
               dataUieName="go-cells"
               isActive={currentTab === SidebarTabs.CELLS}
             />
