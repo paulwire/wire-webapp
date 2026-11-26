@@ -23,6 +23,7 @@ import {
   FocusEvent,
   ReactNode,
   ReactPortal,
+  useEffect,
   useRef,
   useState,
   type FunctionComponent,
@@ -87,8 +88,19 @@ const tooltipStyle: (theme: Theme) => CSSObject = theme => {
   };
 };
 
+interface PositionRect {
+  x: number;
+  y: number;
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+  width: number;
+  height: number;
+}
+
 interface TooltipArrowProps {
-  wrapperRect: DOMRect;
+  wrapperRect: PositionRect;
 }
 
 const TooltipArrow: FunctionComponent<TooltipArrowProps> = ({wrapperRect}) => {
@@ -127,7 +139,7 @@ const TooltipArrow: FunctionComponent<TooltipArrowProps> = ({wrapperRect}) => {
 
 interface PortalProps {
   children: ReactNode;
-  wrapperRect?: DOMRect;
+  wrapperRect?: PositionRect;
   selector?: string;
 }
 
@@ -193,34 +205,109 @@ const PortalComponent = ({children, wrapperRect, selector = '#wire-app'}: Portal
 export interface TooltipProps<T = HTMLDivElement> extends HTMLProps<T> {
   body: ReactNode;
   selector?: string;
+  /** Delay in milliseconds before the tooltip appears after hover/focus starts. Defaults to 0 (immediate). */
+  delay?: number;
+  /** Anchor the tooltip to the trigger element's bounding box ('element', default) or to the mouse cursor ('pointer'). */
+  anchor?: 'element' | 'pointer';
 }
 
 const filterTooltipProps = (props: TooltipProps): Object => {
-  return filterProps(props, ['body', 'selector']);
+  return filterProps(props, ['body', 'selector', 'delay', 'anchor']);
+};
+
+const pointToRect = (pointerX: number, pointerY: number): PositionRect => {
+  return {
+    x: pointerX,
+    y: pointerY,
+    top: pointerY,
+    bottom: pointerY,
+    left: pointerX,
+    right: pointerX,
+    width: 0,
+    height: 0,
+  };
 };
 
 export const Tooltip: FunctionComponent<TooltipProps> = ({children, ...props}) => {
   const [isHovered, setIsHovered] = useState(false);
-  const wrapperRectRef = useRef<DOMRect | undefined>(undefined);
+  const wrapperRectRef = useRef<PositionRect | undefined>(undefined);
+  const pointerPositionRef = useRef<{x: number; y: number} | undefined>(undefined);
+  const showTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const filteredProps = filterTooltipProps(props);
-  const {body, selector = '#wire-app'} = props;
+  const {body, selector = '#wire-app', delay = 0, anchor = 'element'} = props;
 
-  const onElementEnter = ({currentTarget}: MouseEvent | FocusEvent): void => {
-    const wrapperRect = currentTarget.getBoundingClientRect();
-    setIsHovered(true);
-    wrapperRectRef.current = wrapperRect;
+  const clearShowTimeout = (): void => {
+    if (showTimeoutRef.current !== undefined) {
+      clearTimeout(showTimeoutRef.current);
+      showTimeoutRef.current = undefined;
+    }
+  };
+
+  const captureWrapperRect = (currentTarget: Element): void => {
+    wrapperRectRef.current =
+      anchor === 'pointer' && pointerPositionRef.current !== undefined
+        ? pointToRect(pointerPositionRef.current.x, pointerPositionRef.current.y)
+        : currentTarget.getBoundingClientRect();
+  };
+
+  const onElementEnter = (event: MouseEvent | FocusEvent): void => {
+    const target = event.currentTarget;
+
+    if ('clientX' in event) {
+      pointerPositionRef.current = {x: event.clientX, y: event.clientY};
+    }
+
+    captureWrapperRect(target);
+    clearShowTimeout();
+
+    if (delay > 0) {
+      showTimeoutRef.current = setTimeout(() => {
+        captureWrapperRect(target);
+        setIsHovered(true);
+      }, delay);
+    } else {
+      setIsHovered(true);
+    }
+  };
+
+  const onElementMove = ({clientX, clientY}: MouseEvent): void => {
+    pointerPositionRef.current = {x: clientX, y: clientY};
   };
 
   const onElementLeave = (): void => {
-    return setIsHovered(false);
+    clearShowTimeout();
+    setIsHovered(false);
   };
+
+  useEffect(() => {
+    if (!isHovered) {
+      return undefined;
+    }
+
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setIsHovered(false);
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isHovered]);
+
+  useEffect(() => {
+    return clearShowTimeout;
+  }, []);
 
   return (
     <div
       role="presentation"
       data-testid="tooltip-wrapper"
       onMouseEnter={onElementEnter}
+      onMouseMove={onElementMove}
       onMouseLeave={onElementLeave}
       onFocus={onElementEnter}
       onBlur={onElementLeave}
