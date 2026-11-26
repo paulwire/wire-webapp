@@ -1164,6 +1164,8 @@
   "extensionsGiphyMessage": "{tag} • via giphy.com",
   "extensionsGiphyNoGifs": "Oops, no gifs",
   "extensionsGiphyRandom": "Random",
+  "extensionsGiphySearchPlaceholder": "Search Giphy",
+  "extensionsGiphySearchPrompt": "Search for a GIF to get started",
   "failedToAddParticipantSingularKeyPackageClaimFailed": "[bold]{name}[/bold] could not be added because the required encryption information could not be retrieved. Please try again.",
   "failedToAddParticipantSingularNonFederatingBackends": "[bold]{name}[/bold] could not be added to the group as their backend doesn't federate with the backends of all group participants.",
   "failedToAddParticipantSingularNotMlsCapable": "[bold]{name}[/bold] could not be added to this conversation. [bold]{name}[/bold] may not use a device that is MLS-capable.",

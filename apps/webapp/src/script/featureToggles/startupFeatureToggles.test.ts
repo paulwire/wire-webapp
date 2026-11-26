@@ -29,6 +29,8 @@ import {
   driveBulkRestoreFeatureToggleName,
   driveBulkActionProgressFeatureToggleName,
   driveOffboardingFeatureToggleName,
+  giphyLocalFixturesFeatureToggleName,
+  giphySearchReworkFeatureToggleName,
   markAsUnreadFeatureToggleName,
   troubleshooterFeatureToggleName,
   sendCallLogsFeatureToggleName,
@@ -50,6 +52,8 @@ const featureToggleNamesWithDedicatedExistenceTests = [
   troubleshooterFeatureToggleName,
   sendCallLogsFeatureToggleName,
   e2ePdfPreviewFeatureToggleName,
+  giphySearchReworkFeatureToggleName,
+  giphyLocalFixturesFeatureToggleName,
 ] as const;
 
 describe('startupFeatureToggles', function () {
@@ -138,6 +142,26 @@ describe('startupFeatureToggles', function () {
       `?${startupFeatureToggleQueryParameterName}=${sendCallLogsFeatureToggleName}`,
     );
     expect(enabled.isFeatureToggleEnabled(sendCallLogsFeatureToggleName)).toBe(true);
+  });
+
+  it('keeps the GIF search rework disabled by default and enables it through developer settings', () => {
+    expect(
+      createStartupFeatureTogglesFromLocationSearch('').isFeatureToggleEnabled(giphySearchReworkFeatureToggleName),
+    ).toBe(false);
+    const enabled = createStartupFeatureTogglesFromLocationSearch(
+      `?${startupFeatureToggleQueryParameterName}=${giphySearchReworkFeatureToggleName}`,
+    );
+    expect(enabled.isFeatureToggleEnabled(giphySearchReworkFeatureToggleName)).toBe(true);
+  });
+
+  it('keeps local Giphy fixtures disabled by default and enables them through developer settings', () => {
+    expect(
+      createStartupFeatureTogglesFromLocationSearch('').isFeatureToggleEnabled(giphyLocalFixturesFeatureToggleName),
+    ).toBe(false);
+    const enabled = createStartupFeatureTogglesFromLocationSearch(
+      `?${startupFeatureToggleQueryParameterName}=${giphyLocalFixturesFeatureToggleName}`,
+    );
+    expect(enabled.isFeatureToggleEnabled(giphyLocalFixturesFeatureToggleName)).toBe(true);
   });
 
   it('keeps Drive bulk restore disabled until its separate toggle is enabled', () => {
@@ -284,6 +308,8 @@ describe('startupFeatureToggles', function () {
       troubleshooterFeatureToggleName,
       sendCallLogsFeatureToggleName,
       e2ePdfPreviewFeatureToggleName,
+      giphySearchReworkFeatureToggleName,
+      giphyLocalFixturesFeatureToggleName,
     ]);
   });
 

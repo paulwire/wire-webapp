@@ -64,6 +64,7 @@ import {UserError} from '../../error/userError';
 import {
   driveBulkActionProgressFeatureToggleName,
   driveOffboardingFeatureToggleName,
+  giphySearchReworkFeatureToggleName,
 } from '../../featureToggles/startupFeatureToggleNames';
 import {isMouseRightClickEvent, isAuxRightClickEvent} from '../../guards/mouse';
 import {isServiceEntity} from '../../guards/service';
@@ -940,9 +941,10 @@ export function ConversationContent({
           </SharedDriveUploadStatusScope>
         )}
 
-        {isGiphyModalOpen && isNonEmptyString(inputValue) && (
-          <Giphy giphyRepository={repositories.giphy} inputValue={inputValue} onClose={closeGiphy} />
-        )}
+        {isGiphyModalOpen &&
+          (isFeatureToggleEnabled(giphySearchReworkFeatureToggleName) || isNonEmptyString(inputValue)) && (
+            <Giphy giphyRepository={repositories.giphy} inputValue={inputValue} onClose={closeGiphy} />
+          )}
       </ConversationFileDropzone>
     </CellsSelfUserDriveRoleProvider>
   );

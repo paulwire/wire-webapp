@@ -153,6 +153,7 @@ const ControlButtons: FunctionComponent<ControlButtonsProps> = ({
             </li>
           </>
         )}
+        {showGiphyButton === true && isFilesharingEnabled && <GiphyButton onGifClick={onGifClick} />}
         <li aria-hidden="true">
           <FormatSeparator />
         </li>

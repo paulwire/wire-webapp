@@ -17,21 +17,54 @@
  *
  */
 
-import {FC, useCallback, useEffect, useState} from 'react';
+import {FC, FormEvent, useCallback, useEffect, useMemo, useRef, useState} from 'react';
 
+import {CSSObject} from '@emotion/react';
 import {isNonEmptyString} from '@sindresorhus/is';
 import {amplify} from 'amplify';
 import cx from 'classnames';
+import debounceFn from 'debounce-fn';
 
 import {GifImage} from './gifImage';
 
+import {giphySearchReworkFeatureToggleName} from '../../featureToggles/startupFeatureToggleNames';
 import {useApplicationContext} from '../../page/rootProvider';
 import {Gif, GiphyRepository} from '../../repositories/extension/GiphyRepository';
+import {SearchIcon} from '../../uiKit/dataDisplay/icon/searchIcon';
 import {Button, ButtonVariant} from '../../uiKit/inputs/button/button';
+import {Input} from '../../uiKit/inputs/input/input';
+import {InputSubmitCombo} from '../../uiKit/inputs/inputSubmitCombo/inputSubmitCombo';
 import {WebAppEvents} from '../../webAppEvents';
 import * as Icon from '../icon';
 
 const GIPHY_CLOSE_TIMEOUT = 350;
+const GIPHY_SEARCH_DEBOUNCE_MS = 400;
+
+const giphySearchFormStyles: CSSObject = {
+  display: 'flex',
+  flex: 1,
+  margin: '0 8px',
+};
+
+const giphySearchComboStyles: CSSObject = {
+  height: '36px',
+  padding: '0 12px',
+  width: '100%',
+};
+
+const giphySearchInputWrapperStyles: CSSObject = {
+  marginBottom: 0,
+  width: '100%',
+  '.wireinput': {
+    boxShadow: 'none',
+    height: '28px',
+    margin: 0,
+    padding: '0 8px',
+    '&:focus, &:focus-visible, &:hover, &:active, &:invalid:not(:focus)': {
+      boxShadow: 'none',
+    },
+  },
+};
 
 export enum GiphyState {
   DEFAULT = '',
@@ -50,7 +83,10 @@ interface GiphyProps {
 }
 
 const Giphy: FC<GiphyProps> = ({giphyRepository, defaultGiphyState = GiphyState.DEFAULT, inputValue, onClose}) => {
-  const {translate} = useApplicationContext();
+  const {translate, isFeatureToggleEnabled} = useApplicationContext();
+  // Behind the `giphy-search-rework` toggle; see useGiphy.ts for why.
+  const isSearchReworkEnabled = isFeatureToggleEnabled(giphySearchReworkFeatureToggleName);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [playAnimation, setPlayAnimation] = useState<boolean>(false);
   const [currentQuery, setCurrentQuery] = useState<string>(inputValue);
   const [gifs, setGifs] = useState<Gif[]>([]);
@@ -64,6 +100,7 @@ const Giphy: FC<GiphyProps> = ({giphyRepository, defaultGiphyState = GiphyState.
   const isSingleGif = giphyState === GiphyState.RESULT;
   const isMultipleGifs = giphyState === GiphyState.RESULTS;
   const noSearchResults = giphyState === GiphyState.NO_SEARCH_RESULT;
+  const isDefaultState = giphyState === GiphyState.DEFAULT;
 
   const hasGifs = gifs.length > 0;
 
@@ -180,18 +217,69 @@ const Giphy: FC<GiphyProps> = ({giphyRepository, defaultGiphyState = GiphyState.
     }
   };
 
+  const runSearch = useCallback(
+    (query: string): void => {
+      const trimmedQuery = query.trim();
+      if (isNonEmptyString(trimmedQuery)) {
+        void showGiphy(trimmedQuery);
+      }
+    },
+    [showGiphy],
+  );
+
+  const onSearchSubmit = (event: FormEvent<HTMLFormElement>): void => {
+    event.preventDefault();
+    runSearch(currentQuery);
+  };
+
+  // Searches automatically a short while after the user stops typing, so finding a GIF
+  // doesn't depend on noticing you need to press Enter or click the search icon.
+  const debouncedRunSearch = useMemo(() => {
+    return debounceFn(
+      (query: string) => {
+        runSearch(query);
+      },
+      {wait: GIPHY_SEARCH_DEBOUNCE_MS},
+    );
+  }, [runSearch]);
+
+  const onSearchChange = (query: string): void => {
+    setCurrentQuery(query);
+    debouncedRunSearch(query);
+  };
+
   useEffect(() => {
+    return () => {
+      debouncedRunSearch.cancel();
+    };
+  }, [debouncedRunSearch]);
+
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      return setPlayAnimation(true);
+    });
+
     if (isNonEmptyString(inputValue)) {
-      requestAnimationFrame(() => {
-        return setPlayAnimation(true);
-      });
       void showGiphy(inputValue);
     }
-  }, [inputValue, showGiphy]);
+    // only run once, when the modal mounts
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (isSearchReworkEnabled) {
+      searchInputRef.current?.focus();
+    }
+  }, [isSearchReworkEnabled]);
 
   return (
     <div id="giphy-modal" className={cx('giphy-modal modal modal-large modal-show', {'modal-fadein': playAnimation})}>
-      <div role="dialog" aria-labelledby="giphy-name">
+      <div
+        role="dialog"
+        {...(isSearchReworkEnabled
+          ? {'aria-label': translate('extensionsBubbleButtonGif')}
+          : {'aria-labelledby': 'giphy-name'})}
+      >
         <div className="modal-content">
           <header className="giphy-modal-header modal-header">
             {isSingleGif && (
@@ -214,9 +302,36 @@ const Giphy: FC<GiphyProps> = ({giphyRepository, defaultGiphyState = GiphyState.
 
             {!(isSingleGif || isMultipleGifs || noSearchResults) && <span className="giphy-modal-header-button" />}
 
-            <span id="giphy-name" className="label-xs" data-uie-name="giphy-query">
-              {currentQuery}
-            </span>
+            {isSearchReworkEnabled ? (
+              <form className="giphy-modal-search" css={giphySearchFormStyles} onSubmit={onSearchSubmit}>
+                <InputSubmitCombo css={giphySearchComboStyles}>
+                  <SearchIcon
+                    css={{cursor: 'pointer', flexShrink: 0}}
+                    aria-label={translate('extensionsGiphySearchPlaceholder')}
+                    onClick={() => {
+                      runSearch(currentQuery);
+                    }}
+                  />
+
+                  <Input
+                    ref={searchInputRef}
+                    type="text"
+                    value={currentQuery}
+                    wrapperCSS={giphySearchInputWrapperStyles}
+                    placeholder={translate('extensionsGiphySearchPlaceholder')}
+                    aria-label={translate('extensionsGiphySearchPlaceholder')}
+                    onChange={event => {
+                      onSearchChange(event.currentTarget.value);
+                    }}
+                    data-uie-name="giphy-query"
+                  />
+                </InputSubmitCombo>
+              </form>
+            ) : (
+              <span id="giphy-name" className="label-xs" data-uie-name="giphy-query">
+                {currentQuery}
+              </span>
+            )}
 
             <button
               type="button"
@@ -230,6 +345,14 @@ const Giphy: FC<GiphyProps> = ({giphyRepository, defaultGiphyState = GiphyState.
           </header>
 
           <div className="giphy-modal-center modal-center">
+            {isSearchReworkEnabled && isDefaultState && (
+              <div className="gif-container-error">
+                <span className="gif-container-error-message" data-uie-name="giphy-search-prompt">
+                  {translate('extensionsGiphySearchPrompt')}
+                </span>
+              </div>
+            )}
+
             {isLoading && (
               <div className="gif-container-spinner">
                 <div className="icon-spinner spin" aria-live="polite" aria-busy={isLoading} aria-label={loadingTxt} />

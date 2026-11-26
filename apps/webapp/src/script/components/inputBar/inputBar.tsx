@@ -41,7 +41,6 @@ import {useMessageHandling} from './useMessageHandling/useMessageHandling';
 import {usePing} from './usePing/usePing';
 import {useTypingIndicator} from './useTypingIndicator/useTypingIndicator';
 
-import {Config} from '../../Config';
 import {disableMessagePreprocessingFeatureToggleName} from '../../featureToggles/startupFeatureToggleNames';
 import {useUserPropertyValue} from '../../hooks/useUserProperty';
 import {useApplicationContext} from '../../page/rootProvider';
@@ -60,7 +59,6 @@ import {TeamState} from '../../repositories/team/TeamState';
 import {EventName} from '../../repositories/tracking/eventName';
 import {CONVERSATION_TYPING_INDICATOR_MODE} from '../../repositories/user/typingIndicatorMode';
 import {useKoSubscribableChildren} from '../../util/componentUtil';
-import {TIME_IN_MILLIS} from '../../util/timeUtil';
 import {WebAppEvents} from '../../webAppEvents';
 import {Avatar, AVATAR_SIZE} from '../avatar';
 import {ConversationClassifiedBar} from '../classifiedBar/classifiedBar';
@@ -68,13 +66,7 @@ import {isConversationFileUploadAllowed} from '../conversation/conversationFileD
 import {useFileUploadState} from '../conversation/useFilesUploadState/useFilesUploadState';
 import {EmojiPicker} from '../emojiPicker/emojiPicker';
 
-const pingTimeoutInSeconds = 2;
-
-const CONFIG = {
-  ...Config.getConfig(),
-  PING_TIMEOUT: TIME_IN_MILLIS.SECOND * pingTimeoutInSeconds,
-  GIPHY_TEXT_LENGTH: 256,
-};
+const GIPHY_TEXT_LENGTH = 256;
 
 interface InputBarProps {
   readonly conversation: Conversation;
@@ -298,7 +290,7 @@ function InputBarContent({
 
   const giphy = useGiphy({
     text: messageContent.text,
-    maxLength: CONFIG.GIPHY_TEXT_LENGTH,
+    maxLength: GIPHY_TEXT_LENGTH,
     openGiphy,
     generateQuote,
     messageRepository,

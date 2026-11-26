@@ -19,8 +19,11 @@
 
 import {fireEvent, render, waitFor} from '@testing-library/react';
 
+import userEvent from '@testing-library/user-event';
+
+import {giphySearchReworkFeatureToggleName} from '../../featureToggles/startupFeatureToggleNames';
 import {GiphyRepository} from '../../repositories/extension/GiphyRepository';
-import {withTheme} from '../../auth/util/test/testUtil';
+import {withTheme, withThemeAndRootContext} from '../../auth/util/test/testUtil';
 import {translateForTest} from '../../util/test/translateForTest';
 import {
   createRootContextValueForTest,
@@ -42,6 +45,14 @@ const getDefaultProps = (): GetDefaultPropsResult => {
 const closeButtonId = 'do-close-giphy-modal';
 const rootProviderWrapper = createRootProviderWrapperForTest(
   createRootContextValueForTest({translate: translateForTest}),
+);
+const rootProviderWrapperWithSearchReworkEnabled = createRootProviderWrapperForTest(
+  createRootContextValueForTest({
+    translate: translateForTest,
+    isFeatureToggleEnabled: featureToggleName => {
+      return featureToggleName === giphySearchReworkFeatureToggleName;
+    },
+  }),
 );
 
 describe('Giphy', () => {
@@ -88,5 +99,94 @@ describe('Giphy', () => {
       return getByTestId(closeButtonId);
     });
     expect(getByText('extensionsGiphyNoGifs')).not.toBeNull();
+  });
+
+  describe('with the giphy-search-rework toggle enabled', () => {
+    it('renders an editable, pre-filled search box instead of the read-only query label', async () => {
+      const {getByDisplayValue, getByTestId} = render(
+        withThemeAndRootContext(
+          <Giphy {...getDefaultProps()} defaultGiphyState={GiphyState.RESULT} />,
+          rootProviderWrapperWithSearchReworkEnabled,
+        ),
+      );
+      await waitFor(() => {
+        return getByTestId(closeButtonId);
+      });
+      expect(getByDisplayValue(inputValue)).not.toBeNull();
+    });
+
+    it('shows a prompt instead of searching when opened without input text', async () => {
+      const props = {...getDefaultProps(), inputValue: ''};
+      const {getByText, getByDisplayValue} = render(
+        withThemeAndRootContext(<Giphy {...props} />, rootProviderWrapperWithSearchReworkEnabled),
+      );
+
+      expect(getByDisplayValue('')).not.toBeNull();
+      expect(getByText('extensionsGiphySearchPrompt')).not.toBeNull();
+      expect(props.giphyRepository.getGifs).not.toHaveBeenCalled();
+    });
+
+    it('re-searches with the edited term when the search box is submitted', async () => {
+      const props = getDefaultProps();
+      const {getByDisplayValue} = render(
+        withThemeAndRootContext(<Giphy {...props} />, rootProviderWrapperWithSearchReworkEnabled),
+      );
+
+      await waitFor(() => {
+        return expect(props.giphyRepository.getGifs).toHaveBeenCalledWith(inputValue);
+      });
+
+      const searchInput = getByDisplayValue(inputValue);
+      fireEvent.change(searchInput, {target: {value: 'new search term'}});
+      fireEvent.submit(searchInput.closest('form') as HTMLFormElement);
+
+      await waitFor(() => {
+        return expect(props.giphyRepository.getGifs).toHaveBeenCalledWith('new search term');
+      });
+    });
+
+    it('searches automatically a short while after typing, without pressing Enter', async () => {
+      jest.useFakeTimers({advanceTimers: true});
+      try {
+        const props = getDefaultProps();
+        const {getByDisplayValue} = render(
+          withThemeAndRootContext(<Giphy {...props} />, rootProviderWrapperWithSearchReworkEnabled),
+        );
+
+        await waitFor(() => {
+          return expect(props.giphyRepository.getGifs).toHaveBeenCalledWith(inputValue);
+        });
+
+        const searchInput = getByDisplayValue(inputValue);
+        fireEvent.change(searchInput, {target: {value: 'typed without enter'}});
+
+        // no explicit submit (no Enter, no icon click)
+        expect(props.giphyRepository.getGifs).not.toHaveBeenCalledWith('typed without enter');
+
+        await waitFor(() => {
+          return expect(props.giphyRepository.getGifs).toHaveBeenCalledWith('typed without enter');
+        });
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('ignores an empty or whitespace-only search submission', async () => {
+      const props = getDefaultProps();
+      const {getByDisplayValue} = render(
+        withThemeAndRootContext(<Giphy {...props} />, rootProviderWrapperWithSearchReworkEnabled),
+      );
+
+      await waitFor(() => {
+        return expect(props.giphyRepository.getGifs).toHaveBeenCalledWith(inputValue);
+      });
+      (props.giphyRepository.getGifs as jest.Mock).mockClear();
+
+      const searchInput = getByDisplayValue(inputValue);
+      await userEvent.clear(searchInput);
+      fireEvent.submit(searchInput.closest('form') as HTMLFormElement);
+
+      expect(props.giphyRepository.getGifs).not.toHaveBeenCalled();
+    });
   });
 });

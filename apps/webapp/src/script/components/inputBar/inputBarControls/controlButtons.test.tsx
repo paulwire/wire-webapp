@@ -154,12 +154,7 @@ describe('ControlButtons', () => {
   });
 
   it.each<[string, string[]]>([
-    [
-      '',
-      allButtonTitles.filter(button => {
-        return button != 'extensionsBubbleButtonGif';
-      }),
-    ],
+    ['', allButtonTitles],
     ['hello', ['extensionsBubbleButtonGif']],
   ])('Shows the right buttons depending on the input (input: %s)', (input, buttonTitles) => {
     const params = {...defaultParams, ...{input}};
@@ -181,4 +176,25 @@ describe('ControlButtons', () => {
         expect(queryByTitle(button)).toBe(null);
       });
   });
+
+  it.each<[string, boolean, string[]]>([
+    ['', false, []],
+    ['', true, ['extensionsBubbleButtonGif']],
+    ['hello', false, []],
+    ['hello', true, ['extensionsBubbleButtonGif']],
+  ])(
+    'Shows the gif button only when showGiphyButton is true, regardless of input (input: %s, showGiphyButton: %s)',
+    (input, showGiphyButton, buttonTitles) => {
+      const params = {...defaultParams, input, showGiphyButton};
+      const {queryByTitle} = render(withTheme(<ControlButtons {...params} />), {
+        wrapper: rootProviderWrapper,
+      });
+
+      if (buttonTitles.includes('extensionsBubbleButtonGif')) {
+        expect(queryByTitle('extensionsBubbleButtonGif')).not.toBe(null);
+      } else {
+        expect(queryByTitle('extensionsBubbleButtonGif')).toBe(null);
+      }
+    },
+  );
 });

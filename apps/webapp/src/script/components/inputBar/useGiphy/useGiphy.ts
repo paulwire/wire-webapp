@@ -22,6 +22,8 @@ import {useCallback, useEffect, useMemo} from 'react';
 import {amplify} from 'amplify';
 
 import {Config} from '../../../Config';
+import {giphySearchReworkFeatureToggleName} from '../../../featureToggles/startupFeatureToggleNames';
+import {useApplicationContext} from '../../../page/rootProvider';
 import {MessageRepository, OutgoingQuote} from '../../../repositories/conversation/MessageRepository';
 import {Conversation} from '../../../repositories/entity/Conversation';
 import {WebAppEvents} from '../../../webAppEvents';
@@ -50,14 +52,21 @@ export const useGiphy = ({
   conversation,
   cancelMesssageEditing,
 }: UseGiphyProps): UseGiphyResult => {
+  const {isFeatureToggleEnabled} = useApplicationContext();
+  const isGiphySearchReworkEnabled = isFeatureToggleEnabled(giphySearchReworkFeatureToggleName);
   const isMessageFormatButtonsFlagEnabled = Config.getConfig().FEATURE.ENABLE_MESSAGE_FORMAT_BUTTONS;
 
+  // Behind the `giphy-search-rework` toggle so the always-visible GIF button and
+  // editable search modal don't reach everyone until the rework has been validated.
   const showGiphyButton = useMemo(() => {
+    if (isGiphySearchReworkEnabled) {
+      return true;
+    }
     if (isMessageFormatButtonsFlagEnabled) {
       return text.length > 0;
     }
     return text.length > 0 && text.length <= maxLength;
-  }, [text.length, maxLength, isMessageFormatButtonsFlagEnabled]);
+  }, [isGiphySearchReworkEnabled, text.length, maxLength, isMessageFormatButtonsFlagEnabled]);
 
   const handleGifClick = (): void => {
     return openGiphy(text);
