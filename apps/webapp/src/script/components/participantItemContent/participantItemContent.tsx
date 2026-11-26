@@ -52,6 +52,8 @@ interface ParticipantItemContentProps {
   onDropdownClick?: (event: React.MouseEvent<HTMLButtonElement>) => void;
   isProteusVerified?: boolean;
   isMLSVerified?: boolean;
+  /** When set, the name is shown in a delayed custom Tooltip (matching the conversation list) instead of a native `title` tooltip. */
+  tooltipDelay?: number;
 }
 
 const servicePlaceholder = {isBlocked: ko.observable(false)};
@@ -63,6 +65,7 @@ export const ParticipantItemContent: FunctionComponent<ParticipantItemContentPro
   selfString = '',
   hasUsernameInfo = false,
   showArrow = false,
+  tooltipDelay,
 }: ParticipantItemContentProps) => {
   const {name} = useKoSubscribableChildren(participant, ['name']);
 
@@ -75,7 +78,13 @@ export const ParticipantItemContent: FunctionComponent<ParticipantItemContentPro
       <div css={contentText}>
         <div css={nameWrapper}>
           {!isService ? (
-            <UserInfo user={participant} css={[userName, ellipsis]} selfString={selfString} dataUieName="status-name">
+            <UserInfo
+              user={participant}
+              css={[userName, ellipsis]}
+              selfString={selfString}
+              dataUieName="status-name"
+              tooltipDelay={tooltipDelay}
+            >
               <UserVerificationBadges user={participant} groupId={groupId} />
               {isBlocked && (
                 <span css={{marginLeft: 4}}>

@@ -51,6 +51,8 @@ export interface UserListItemProps {
   user: User;
   showArrow: boolean;
   showPendingOnboarding?: boolean;
+  /** When set, the name is shown in a delayed custom Tooltip (matching the conversation list) instead of a native `title` tooltip. */
+  tooltipDelay?: number;
 }
 
 export const UserListItem: FunctionComponent<UserListItemProps> = ({
@@ -68,6 +70,7 @@ export const UserListItem: FunctionComponent<UserListItemProps> = ({
   user,
   onClick,
   onKeyDown,
+  tooltipDelay,
 }: UserListItemProps) => {
   const {translate} = useApplicationContext();
   const checkboxId = useId();
@@ -124,6 +127,7 @@ export const UserListItem: FunctionComponent<UserListItemProps> = ({
         shortDescription={contentInfoText}
         {...(isSelf && {selfString})}
         hasUsernameInfo={hasUsernameInfo}
+        tooltipDelay={tooltipDelay}
       />
 
       <UserStatusBadges

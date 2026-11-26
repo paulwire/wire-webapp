@@ -383,6 +383,7 @@ export const PeopleTab: FunctionComponent<PeopleTabProps> = ({
                 users={results.contacts}
                 selfUser={selfUser}
                 showPendingOnboarding
+                tooltipDelay={500}
               />
             </div>
           </div>
@@ -402,6 +403,7 @@ export const PeopleTab: FunctionComponent<PeopleTabProps> = ({
                 mode={UserlistMode.OTHERS}
                 conversationRepository={conversationRepository}
                 selfUser={selfUser}
+                tooltipDelay={500}
               />
             </div>
           </div>

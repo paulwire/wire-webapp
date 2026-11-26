@@ -70,6 +70,8 @@ interface UserListProps {
   filterDeletedUsers?: boolean;
   isContactsOpen?: boolean;
   onContactsOpenChange?: (isOpen: boolean) => void;
+  /** When set, names are shown in a delayed custom Tooltip (matching the conversation list) instead of a native `title` tooltip. */
+  tooltipDelay?: number;
 }
 
 export const UserList: FunctionComponent<UserListProps> = ({
@@ -96,6 +98,7 @@ export const UserList: FunctionComponent<UserListProps> = ({
   filterDeletedUsers = true,
   isContactsOpen: controlledContactsOpen,
   onContactsOpenChange,
+  tooltipDelay,
 }: UserListProps) => {
   const {translate} = useApplicationContext();
   const [maxShownUsers, setMaxShownUsers] = useState(USER_CHUNK_SIZE);
@@ -169,6 +172,7 @@ export const UserList: FunctionComponent<UserListProps> = ({
             onKeyDown={onUserKeyPressed}
             showArrow={showArrow}
             showPendingOnboarding={showPendingOnboarding}
+            tooltipDelay={tooltipDelay}
           />
         </li>
       );
@@ -188,6 +192,7 @@ export const UserList: FunctionComponent<UserListProps> = ({
       showArrow,
       showPendingOnboarding,
       teamState,
+      tooltipDelay,
     ],
   );
 
