@@ -1161,7 +1161,7 @@
   "extensionsBubbleButtonGif": "Gif",
   "extensionsGiphyButtonMore": "Try Another",
   "extensionsGiphyButtonOk": "Send",
-  "extensionsGiphyMessage": "{tag} • via giphy.com",
+  "extensionsGiphyMessage": "via giphy.com",
   "extensionsGiphyNoGifs": "Oops, no gifs",
   "extensionsGiphyRandom": "Random",
   "extensionsGiphySearchPlaceholder": "Search Giphy",
