@@ -101,7 +101,7 @@ import {ReceiptsMiddleware} from '../repositories/event/preprocessor/ReceiptsMid
 import {RepliesUpdaterMiddleware} from '../repositories/event/preprocessor/RepliesUpdaterMiddleware';
 import {ServiceMiddleware} from '../repositories/event/preprocessor/ServiceMiddleware';
 import {FederationEventProcessor} from '../repositories/event/processor/FederationEventProcessor';
-import {GiphyRepository} from '../repositories/extension/GiphyRepository';
+import {FixtureAwareGiphyRepository} from '../repositories/extension/FixtureAwareGiphyRepository';
 import {GiphyService} from '../repositories/extension/GiphyService';
 import {IntegrationRepository} from '../repositories/integration/IntegrationRepository';
 import {IntegrationService} from '../repositories/integration/IntegrationService';
@@ -295,7 +295,7 @@ export class App {
 
     repositories.asset = container.resolve(AssetRepository);
 
-    repositories.giphy = new GiphyRepository(new GiphyService());
+    repositories.giphy = new FixtureAwareGiphyRepository(new GiphyService());
     repositories.properties = new PropertiesRepository(new PropertiesService(), selfService, this.translate);
     repositories.serverTime = serverTimeHandler;
     repositories.storage = new StorageRepository();

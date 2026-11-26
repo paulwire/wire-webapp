@@ -17,7 +17,7 @@
  *
  */
 
-import {useEffect, useRef, useState} from 'react';
+import {useEffect, useRef, useState, type ChangeEvent, type InputHTMLAttributes} from 'react';
 
 import type {JSX} from '@emotion/react/jsx-runtime';
 import {isNonEmptyString, isNullOrUndefined, isUndefined} from '@sindresorhus/is';
@@ -30,11 +30,16 @@ import {wrapperStyles} from './configToolbar.styles';
 import {openDebugToolbarEventName} from './debugToolbarEvents';
 
 import {Config, Configuration} from '../../Config';
-import {StartupFeatureToggleName, startupFeatureToggleNames} from '../../featureToggles/startupFeatureToggleNames';
+import {
+  giphyLocalFixturesFeatureToggleName,
+  StartupFeatureToggleName,
+  startupFeatureToggleNames,
+} from '../../featureToggles/startupFeatureToggleNames';
 import {updateLocationSearchForStartupFeatureToggle} from '../../featureToggles/startupFeatureToggleQueryParameters';
 import {useClickOutside} from '../../hooks/useClickOutside';
 import {useApplicationContext} from '../../page/rootProvider';
 import {ConversationState} from '../../repositories/conversation/ConversationState';
+import {getFixtureGifs, setFixtureGifsFromFiles} from '../../repositories/extension/giphyFixtureStore';
 import {Button} from '../../uiKit/inputs/button/button';
 import {Input} from '../../uiKit/inputs/input/input';
 import {Switch} from '../../uiKit/inputs/switch/switch';
@@ -75,6 +80,7 @@ export function ConfigToolbar(): JSX.Element | null {
   const [showConfig, setShowConfig] = useState(false);
   const [isResettingMLSConversation, setIsResettingMLSConversation] = useState(false);
   const [isAdvancingEpoch, setIsAdvancingEpoch] = useState(false);
+  const [fixtureGifs, setFixtureGifsState] = useState(getFixtureGifs());
   const debug = window.wire?.app?.debug;
   const {activeConversation} = useKoSubscribableChildren(container.resolve(ConversationState), ['activeConversation']);
   const [ignoredMLSConversation, setIgnoredMLSConversation] = useState(debug?.ignoredMLSConversation());
@@ -451,6 +457,72 @@ export function ConfigToolbar(): JSX.Element | null {
     );
   }
 
+  function renderGiphyFixturePicker(): JSX.Element {
+    const folderInputAttributes: InputHTMLAttributes<HTMLInputElement> & {
+      readonly directory?: string;
+      readonly webkitdirectory?: string;
+    } = {directory: '', webkitdirectory: ''};
+
+    const handleFixtureFilesPicked = (event: ChangeEvent<HTMLInputElement>): void => {
+      setFixtureGifsFromFiles(Array.from(event.target.files ?? []));
+      setFixtureGifsState(getFixtureGifs());
+      // allow re-picking the exact same file(s)/folder without the browser treating it as a no-op change
+      event.target.value = '';
+    };
+
+    return (
+      <div style={{marginBottom: '10px'}}>
+        <label style={{display: 'block', fontWeight: 'bold'}}>GIPHY LOCAL FIXTURES ({fixtureGifs.length} loaded)</label>
+        <p style={{margin: '4px 0 8px', fontSize: '12px'}}>
+          Pick GIF/image file(s), or a whole folder of them, to use instead of the real Giphy API search/random
+          endpoints (useful on environments, like staging, where the Giphy token isn&apos;t configured). To pick several
+          files at once in the file dialog, ctrl/cmd-click them before confirming — or use the folder picker to grab
+          every image in a folder in one go. Re-picking replaces the previous selection.
+        </p>
+        <div style={{display: 'flex', gap: '8px', marginBottom: '8px'}}>
+          <div>
+            <label htmlFor="giphy-fixture-files" style={{display: 'block', fontSize: '12px'}}>
+              Pick file(s)
+            </label>
+            <input id="giphy-fixture-files" type="file" accept="image/*" multiple onChange={handleFixtureFilesPicked} />
+          </div>
+          <div>
+            <label htmlFor="giphy-fixture-folder" style={{display: 'block', fontSize: '12px'}}>
+              Pick a folder
+            </label>
+            <input
+              id="giphy-fixture-folder"
+              type="file"
+              accept="image/*"
+              multiple
+              {...folderInputAttributes}
+              onChange={handleFixtureFilesPicked}
+            />
+          </div>
+        </div>
+
+        {fixtureGifs.length > 0 && (
+          <ul style={{display: 'flex', flexWrap: 'wrap', gap: '8px', listStyle: 'none', margin: 0, padding: 0}}>
+            {fixtureGifs.map(gif => {
+              return (
+                <li key={gif.url} style={{textAlign: 'center', width: '72px'}}>
+                  <img
+                    src={gif.animated}
+                    alt={gif.title}
+                    style={{width: '64px', height: '64px', objectFit: 'cover', border: '1px solid #ccc'}}
+                  />
+                  <div style={{fontSize: '10px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                    {gif.title}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
   const resetMLSConversation = async (): Promise<void> => {
     setIsResettingMLSConversation(true);
     try {
@@ -669,6 +741,14 @@ export function ConfigToolbar(): JSX.Element | null {
       <div>{renderStartupFeatureToggleCheckboxList()}</div>
 
       <hr />
+
+      {isFeatureToggleEnabled(giphyLocalFixturesFeatureToggleName) && (
+        <>
+          <div>{renderGiphyFixturePicker()}</div>
+
+          <hr />
+        </>
+      )}
 
       <CallLogsUploadSettings />
 
