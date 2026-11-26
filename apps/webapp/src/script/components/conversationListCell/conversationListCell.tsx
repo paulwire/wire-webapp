@@ -41,6 +41,7 @@ import {useNoInternetCallGuard} from '../../hooks/useNoInternetCallGuard/useNoIn
 import {useApplicationContext} from '../../page/rootProvider';
 import type {Conversation} from '../../repositories/entity/Conversation';
 import {MediaType} from '../../repositories/media/MediaType';
+import {Tooltip} from '../../uiKit/dataDisplay/tooltip/tooltip';
 import {TabIndex} from '../../uiKit/utils/enums';
 import {useKoSubscribableChildren} from '../../util/componentUtil';
 import {isKey, isOneOfKeys, KEY} from '../../util/keyboardUtil';
@@ -295,13 +296,18 @@ export const ConversationListCell: FunctionComponent<ConversationListCellProps> 
 
         <div className="conversation-list-cell-center">
           {is1to1 && !isUndefined(firstUserEntity) ? (
-            <UserInfo user={firstUserEntity} isActive={isActive}>
+            <UserInfo user={firstUserEntity} isActive={isActive} tooltipDelay={500}>
               {isConversationWithBlockedUser && <UserBlockedBadge />}
             </UserInfo>
           ) : (
-            <span className={cx('conversation-list-cell-name', {'conversation-list-cell-name--active': isActive})}>
-              {displayName}
-            </span>
+            <Tooltip body={displayName} delay={500} anchor="pointer" style={{width: '100%'}}>
+              <span
+                className={cx('conversation-list-cell-name', {'conversation-list-cell-name--active': isActive})}
+                style={{display: 'block', width: '100%'}}
+              >
+                {displayName}
+              </span>
+            </Tooltip>
           )}
 
           <CellDescription

@@ -23,6 +23,7 @@ import {CSSObject} from '@emotion/react';
 import cx from 'classnames';
 
 import {User} from '../../repositories/entity/User';
+import {Tooltip} from '../../uiKit/dataDisplay/tooltip/tooltip';
 import {useKoSubscribableChildren} from '../../util/componentUtil';
 import {KEY} from '../../util/keyboardUtil';
 import {selfIndicator} from '../participantItemContent/participantItem.styles';
@@ -37,6 +38,8 @@ interface UserInfoProps {
   onClick?: (event: React.MouseEvent | React.KeyboardEvent) => void;
   isActive?: boolean;
   children?: React.ReactNode;
+  /** When set, the name is shown in a delayed custom Tooltip (matching the group/channel row) instead of a native `title` tooltip. */
+  tooltipDelay?: number;
 }
 
 const buttonCommonStyles: CSSObject = {
@@ -54,6 +57,7 @@ export const UserInfo: FunctionComponent<UserInfoProps> = ({
   isActive = false,
   onClick,
   children,
+  tooltipDelay,
 }: UserInfoProps) => {
   const {name} = useKoSubscribableChildren(user, ['name']);
 
@@ -74,16 +78,27 @@ export const UserInfo: FunctionComponent<UserInfoProps> = ({
     }
   };
 
+  const nameSpan = (
+    <span
+      className={cx('conversation-list-cell-name', {'conversation-list-cell-name--active': isActive})}
+      css={{userSelect: 'none'}}
+      style={tooltipDelay === undefined ? undefined : {display: 'block', width: '100%'}}
+      data-uie-name="status-label"
+      title={tooltipDelay === undefined ? (title ?? name) : undefined}
+    >
+      <UserName user={user} />
+    </span>
+  );
+
   const content = (
     <span data-uie-name={dataUieName} css={{alignItems: 'center', display: 'flex', overflow: 'hidden'}}>
-      <span
-        className={cx('conversation-list-cell-name', {'conversation-list-cell-name--active': isActive})}
-        css={{userSelect: 'none'}}
-        data-uie-name="status-label"
-        title={title ?? name}
-      >
-        <UserName user={user} />
-      </span>
+      {tooltipDelay === undefined ? (
+        nameSpan
+      ) : (
+        <Tooltip body={title ?? name} delay={tooltipDelay} anchor="pointer" style={{width: '100%'}}>
+          {nameSpan}
+        </Tooltip>
+      )}
 
       {selfString !== undefined && selfString !== '' && <span css={selfIndicator}>{selfString}</span>}
 
